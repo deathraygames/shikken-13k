@@ -1,0 +1,94 @@
+<html><head><meta charset=utf-8> 
+<title>Shikken</title><style> 
+body {
+	background: #444;
+	margin: 0;
+	padding: 0;
+	font-size: calc(14px + 1vmin);
+}
+main {
+	position: fixed;
+	width: 100vw;
+	height: 100wh;
+}
+#w {
+	width: 1000px;
+	height: 1000px;
+	border: solid 1px black;
+	position: absolute;
+	background: #eee6e6;
+	box-shadow: 0 0 5vmin rgba(0, 0, 0, 0.3);
+}
+#ws, #wc {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	/* background: rgba(255, 0, 0, 0.2); */
+}
+#ws {
+	/* background: rgba(0, 0, 255, 0.2); */
+}
+
+.ui {
+	position: fixed;
+	background: rgba(0, 0, 0, 0.1);
+	width: 100vw;
+	display: flex;
+	justify-content: space-around;
+	padding: 2vmin;
+}
+.uirow {
+	display: flex;
+	justify-content: space-around;
+	padding: 2vmin;
+}
+#tui {
+	top: 0;
+}
+#bui {
+	bottom: 0;
+}
+
+button {
+	border-radius: 50%;
+	border: solid 1px #555;
+	background: rgba(255, 255, 255, 0.7);
+	color: #000;
+	padding: 2vmin;
+	font-size: inherit;
+	cursor: pointer;
+}
+button:hover {
+	background: white;
+}
+
+#build {
+	transform: scale(0);
+	transition: all ease-in-out 0.2s;
+}
+.bselected #build {
+	transform: scale(1);
+}
+
+
+.building, .building-connector {
+	fill: #fff;
+	stroke: #555;
+	stroke-width: 2px;
+}
+.building:hover {
+	stroke: #000;
+}
+
+.road {
+	stroke: #b99;
+	stroke-width: 4px;
+}</style></head> 
+<body><script> 
+eval(Function("[M='Sw}i}xeLD?Ah`WEJqHuNWH~tsL~zIfSn_zp~Oy^ePvLIh^aPc|@G@U|TZRypAvfq{ojVNoIwfHKbJMoxMjYrffB]V?xCsY[PDGNRft{zNexRej`{[mZAXtyK_bN~T|qT^ekQBOmPuir]EgrYhVQhzXMqPtaAsWHv|TMM|fQw}xhyV~g?g[iElgZ?^LBJRlOfzg]zbl}N@lwIh{Bb|ZEf^i]wprmOQou~ynenFdC]^xRZP?T}gLtMXFMucB@{|w]RAW|Td`Zk]wQ]rOdij^nCPh?M^ny]U{hM^tGy|gMtctc_mOwVlgjNynEHUzmlfgNFN|cM`HUDoZXe}XE{vz`jDNL~yCuogawJQRY@wBa`v?FgsYhOxxWUBZUtYrFu?qUcOZ|cpkAxgQOVTRyFHLsgEhGvfZi?LMaqQuIN}|BTOjwgMtzzFYiN@OYRXokolqOgJhgFn^WzosYXY][{^N{[mLOcz_}^V}oDU[qXRpPgWpatZIBz[yMbWt^lbtbFt_zMDl^wCEJZuCxCtxPLRqc[MXx{Lo_qhm{NXL`sUgWhTkBQzHDCGDeqKHxHDrnf@~@B_NJb}vvzGhArRcHG@ezBy{rob{{wAdxEh]KDx}QR|uxdQUkQmDEbEHdzJyX|urXniS~?hThEj~r]BL?mW^bMFfTdanY{oZlDFTdsb^mKdsdIuqi@?CkNfc@mXOzxVbmxG|bVwVqgNRN]NjZA`F_IEVVlHLQjzqIH}Mt~WXbw^eWJGWfWP?sx|`FCUhgkM~@vI}EA_JfWwU`unMTPSjzwQqzwJUTA^OM}lyUS}pZVb@dzMNmnmVvpZ[S?VB]xfCh?_KPs_kpPMo~xI`QAqWl[sAG}byCNq{kSv_K[IWVAMdrewS]L}]S`idqbTktX@zmlOyz@HiuUVLvehmCLZ~RUfqJvMDzadiFDSAd_T|OBrUx^pgc@[cijab{`Ry@FJHRTd_ucV~_VHTQZLUgudSr_XsijVjqNOy_d?HblJs~urW|vqGCxoL`GeGpdvYmJlLaqIie{Qfj?EPXYkZaJ~xbxWwQ|Li@wvFzuapAi}S]ebpgR}OBvI]|HiNCN`}thsKFjTUTHmcyBg^IPFtfdLKZNJ?Y`~iPrvQLuk?vnKwYeU{TOik[j}KuxYe`^O]WP^M{m?}kSIA@gbjbuhSd`q|feSgxAwaZeqEAL{pIH?b]V]SuoXforZRZAYkKjVbFYV~qpZ^GwMYw}T^[shWbLlrNmr]^kKiL[jDmmTHsW_r}`Sx`|}|wc}wCYGHykI~HJO^WFt~FHUzZV}aFo}Y@p]LpBJ`?DSRCLNHQWjOZI~dkziBHJawZVud?]wUS^kYgASBvcr[vAQvE]kSutLwkXetSq_XKvJMDteF@B~H}B}kYsoskB[jKyCcBneuqGnB'",...']charCodeAtUinyxp',"for(;e<2619;c[e++]=x-128)for(x=1;x<128;n=p.map((i,y)=>(t=r[i]*2+1,t=Math.log(t/(h-t)),A-=a[y]*t,t/500)),A=~-h/(1+Math.exp(A))|1,U=o%h<A,o=o%h+(U?A:h-A)*(o>>15)-!U*A,p.map((i,y)=>(t=r[i]+=(U*h/2-r[i]<<15)/((C[i]+=C[i]<5)+.1)>>15,a[y]+=n[y]*(U-A/h))),x=x*2+U)for(p='010202103203210431053105410642065206541'.split(A=0).map((i,y)=>(t=0,[...i].map((i,y)=>(t=t*997+(c[e-i]|0)|0)),h*128-1&t*997+x)*12+y);o<h*128;o=o*64|M.charCodeAt(d++)&63);return String.fromCharCode(...c)")([],[],1<<15,[0,0,0,0,0,0,0,0,0,0,0,0],new Uint16Array(51e6).fill(1<<13),new Uint8Array(51e6),0,0,0))</script> 
+<main><div id=w draggable=true>
+    <svg id=ws viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
+    <canvas id=wc></canvas>
+</div></main>

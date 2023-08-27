@@ -1,0 +1,52 @@
+<html><head>
+    <title>Shikken</title>
+    <meta charset=utf-8>
+<!-- <meta name=viewport content=width=device-width,height=device-height,initial-scale=1,maximum-scale=1>
+<meta name=apple-mobile-web-app-capable content=yes>
+<meta name=mobile-web-app-capable content=yes> -->
+<link rel=stylesheet href=style.css />
+<link rel=icon type=image/png href=favicon.png>
+</head><body>
+
+<!-- LittleJS engine scripts -->
+<!--
+<script src=engine/engineDebug.js?111></script>
+<script src=engine/engineUtilities.js?111></script>
+<script src=engine/engineSettings.js?111></script>
+<script src=engine/engineObject.js?111></script>
+<script src=engine/engineDraw.js?111></script>
+<script src=engine/engineInput.js?111></script>
+<script src=engine/engineAudio.js?111></script>
+<script src=engine/engineTileLayer.js?111></script>
+<script src=engine/engineParticles.js?111></script>
+<script src=engine/engineMedals.js?111></script>
+<script src=engine/engineWebGL.js?111></script>
+<script src=engine/engine.js?111></script>
+-->
+
+<!-- You can also include all engine scripts like this... -->
+<!-- <script src=engine/engine.all.js></script> -->
+
+<!-- Add your game script(s) here -->
+<script type=module src=src/game.js?111></script>
+<!-- <script type=module src=game_bundle.js?111></script> -->
+<main>
+    <div id=w draggable=true>
+        <canvas id=wc width=1000 height=1000></canvas>
+        <svg id=ws viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+            <g id=layer-road></g>
+            <g id=layer-building></g>
+            <g id=layer-resource></g>
+            <g id=layer-meeple></g>
+        </svg>
+    </div>
+    <div id=bui class="ui uirow">
+        <button id=play>⏯️</button>
+        <button id=build>➕</button>
+        <button id=jobs>⭕</button>
+    </div>
+    <div id=tui class=ui>
+        <div><!-- menu button --></div>
+        <div id=binfo><!-- info about selected building --></div>
+    </div>
+</main>
