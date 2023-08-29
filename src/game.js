@@ -1,4 +1,9 @@
 const WORLD_SIZE = 1000;
+const G = 'grain';
+const S = 'stone';
+const W = 'wood';
+const T = true;
+const F = false;
 const N = null;
 
 const $ = (q) => document.querySelector(q);
@@ -16,15 +21,17 @@ const rand = (a = 1, b = 0) => b + (a - b) * Math.random();
 const randInt = (a = 1, b = 0) => rand(a, b)|0;
 
 const resourceTypes = {
-
+	grain: { shape: 'polygon', sides: 5, },
+	stone: { shape: 'polygon', sides: 5, },
+	wood: { shape: 'polygon', sides: 5, },
 };
 
 const buildingTypes = {
 	// r = radius, cap = resource capacity, mm = max meeples
-	connector: { r: 10, cap: 4, },
-	tower: { r: 14, cap: 2, },
-	farm: { r: 20, cap: 10 },
-	barracks: { r: 20, cap: 2 },
+	connector: { r: 10, cap: 4, cost: [S] },
+	tower: { r: 14, cap: 2, cost: [S, W, W]},
+	farm: { r: 20, cap: 10, cost: [W, W] },
+	barracks: { r: 20, cap: 2, cost: [W, W] },
 	// ...
 };
 
@@ -62,7 +69,8 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 		type: 'connector',
 		// x: 0,
 		// y: 0,
-		resources: [],
+		on: true,
+		resources: [W, S, W, G],
 		// TODO: maintain links (roads) to other buildings so it is easy to find paths
 		...getRandomWorldLocation(),
 		...bParam,
@@ -77,7 +85,7 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 	return b;
 }
 
-
+/* ------------------------------ Rendering ------------------ */
 
 function renderCanvas(ctx) {
 	// ctx.fillStyle = 'green';
@@ -114,12 +122,21 @@ function addRoadSvg(r, layer) {
 	return line;
 }
 
+function renderBuildingResources(b, bEl) {
+	b.resources.forEach((res) => {
+		// bEl.
+		// TODO...
+	});
+}
+
 function renderSvg(layers) {
 	// TODO: render roads as lines
 	g.buildingKeys.forEach((key) => {
 		const b = g.buildings[key];
 		let bEl = $id(key);
 		if (!bEl) bEl = addBuildingSvg(b, layers.building);
+		renderBuildingResources(b, bEl);
+		bEl.classList.toggle('selectedb', (key === g.selectedBuildingKey));
 	});
 	g.roadKeys.forEach((key) => {
 		const r = g.roads[key];
@@ -128,16 +145,65 @@ function renderSvg(layers) {
 	});
 }
 
+function renderUi() {
+	const classes = $('main').classList;
+	classes.toggle('bselected', g.selectedBuildingKey);
+	classes.toggle('looping', g.looping);
+	classes.toggle('creating', g.creating);
+	classes.toggle('pop', g.totalMeeples > 0);
+	// Update countdown
+	if (!g.countdownEl) g.countdownEl = $id('cd');
+	let cd = g.countdown;
+	const mins = Math.floor(cd * (1/1000) * (1/60));
+	cd -= (mins * 1000 * 60);
+	const sec = Math.floor(cd * (1/1000));
+	g.countdownEl.innerText = `${mins}:${sec < 10 ? '0' : ''}${sec}`;
+	// List
+	if (g.creating) {
+		$id('blist').innerHTML = Object.keys(buildingTypes).map((key) => `<li>${key}</li>`).join('');
+	}
+}
+
 function render() {
 	const w = g.world;
 	w.el.style.top = `${w.y}px`;
 	w.el.style.left = `${w.x}px`;
 	renderCanvas(w.ctx);
 	renderSvg(w.layers);
+	renderUi();
 }
 
-function renderUi() {
-	$('main').classList.toggle('bselected', g.selectedBuilding);
+/* ------------------------------ Looping ------------------ */
+
+function loop() {
+	if (!g.looping) return;
+	const now = Number(new Date());
+	const delta = (g.lastTime) ? now - g.lastTime : 0;
+	g.lastTime = now;
+	g.countdown -= delta;
+	// TODO: Do updating of world
+
+	// TODO: Get total of meeples: totalMeeples
+
+	renderUi();
+	setTimeout(loop, 100);
+}
+
+function startLoop() {
+	g.looping = true;
+	loop();
+}
+
+function stopLoop() {
+	g.looping = false;
+	// TODO: cancel timeout timer
+}
+
+/* ------------------------------ Actions ------------------ */
+
+function selectBuilding(b) {
+	g.selectedBuildingKey = b.key;
+	return `${b.type} : ${b.resources.join(', ')}`;
 }
 
 function tapWorld(e) {
@@ -146,18 +212,23 @@ function tapWorld(e) {
 	let binfo = '';
 	if (classes.contains('building')) {
 		const b = g.buildings[t.closest('g').id];
-		console.log(t);
-		if (!b) throw new Error(`Unknown building ${t.id}`);
-		binfo = b.type;
-		g.selectedBuilding = b;
+		if (g.creating && g.selectedBuildingKey) {
+			addRoad(b.key, g.selectedBuildingKey);
+			g.creating = false;
+		}
+		binfo = selectBuilding(b);
+	} else 	if (g.creating && g.selectedBuildingKey) {
+		g.creating = false;
+		const b = addBuilding({ x: e.clientX, y: e.clientY, type: 'connector' }, g.selectedBuildingKey);
+		binfo = selectBuilding(b);
 	} else {
-		g.selectedBuilding = N;
+		g.selectedBuildingKey = N;
 		if (classes.contains('road')) {
 			binfo = 'road';
 		}
 	}
 	$id('binfo').innerHTML = binfo;
-	renderUi();
+	render();
 }
 
 function tapTopUi(e) {
@@ -166,9 +237,17 @@ function tapTopUi(e) {
 function tapBottomUi(e) {
 	const t = e.target;
 	console.log(t);
-	if (t.closest('#play')) {
-		console.log('play/pause');
-	}
+	const taps = {
+		'#play': startLoop,
+		'#pause': stopLoop,
+		'#build': () => g.creating = T,
+		'#cancel': () => g.creating = F,
+		'#restart': () => window.location.reload(),
+	};
+	Object.keys(taps).forEach((key) => {
+		if (t.closest(key)) taps[key]();
+	});
+	renderUi();
 }
 
 function setupEvents(w) {
@@ -228,7 +307,13 @@ const g = window.g = {
 	freeMeeples: {},
 	roads: {},
 	roadKeys: [],
-	selectedBuilding: N,
+	selectedBuildingKey: N,
+	countdownEl: N,
+	lastTime: 0,
+	countdown: 300000, // 5 minutes * 60 seconds/min * 1000 ms/sec
+	looping: F,
+	creating: F,
+	totalMeeples: 0,
 	start,
 };
 document.addEventListener('DOMContentLoaded', g.start);

@@ -1,6 +1,6 @@
 <html><head>
-    <title>Shikken</title>
-    <meta charset=utf-8>
+	<title>Shikken</title>
+	<meta charset=utf-8>
 <!-- <meta name=viewport content=width=device-width,height=device-height,initial-scale=1,maximum-scale=1>
 <meta name=apple-mobile-web-app-capable content=yes>
 <meta name=mobile-web-app-capable content=yes> -->
@@ -31,22 +31,37 @@
 <script type=module src=src/game.js?111></script>
 <!-- <script type=module src=game_bundle.js?111></script> -->
 <main>
-    <div id=w draggable=true>
-        <canvas id=wc width=1000 height=1000></canvas>
-        <svg id=ws viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
-            <g id=layer-road></g>
-            <g id=layer-building></g>
-            <g id=layer-resource></g>
-            <g id=layer-meeple></g>
-        </svg>
-    </div>
-    <div id=bui class="ui uirow">
-        <button id=play>⏯️</button>
-        <button id=build>➕</button>
-        <button id=jobs>⭕</button>
-    </div>
-    <div id=tui class=ui>
-        <div><!-- menu button --></div>
-        <div id=binfo><!-- info about selected building --></div>
-    </div>
+	<div id=w draggable=true>
+		<canvas id=wc width=1000 height=1000></canvas>
+		<svg id=ws viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+			<g id=layer-road></g>
+			<g id=layer-building></g>
+			<g id=layer-resource></g>
+			<g id=layer-meeple></g>
+		</svg>
+	</div>
+	<div id=bui class=ui>
+		<div class=uirow>
+			<div>
+				<button id=play>▶️</button>
+				<button id=pause>⏸️</button>
+			</div>
+			<div>
+				<button id=build>➕</button>
+				<button id=cancel>✖️</button>
+			</div>
+			<div>
+				<button id=restart>💀🔄️</button>
+				<button id=jobs>⭕</button>
+			</div>
+		</div>
+	</div>
+	<div id=tui class=ui>
+		<div class="uirow">
+			<span id=cd></span>
+			<!-- menu button -->
+		</div>
+		<div id=binfo><!-- info about selected building --></div>
+		<div id=blist></div>
+	</div>
 </main>
