@@ -1,121 +1,0 @@
-<html><head><meta charset=utf-8> 
-<title>Shikken</title><style> 
-body {
-	background: #444;
-	margin: 0;
-	padding: 0;
-	font-size: calc(14px + 1vmin);
-}
-main {
-	position: fixed;
-	width: 100vw;
-	height: 100wh;
-}
-#w {
-	width: 1000px;
-	height: 1000px;
-	border: solid 1px black;
-	position: absolute;
-	background: #eee6e6;
-	box-shadow: 0 0 5vmin rgba(0, 0, 0, 0.3);
-}
-#ws, #wc {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	/* background: rgba(255, 0, 0, 0.2); */
-}
-#ws {
-	/* background: rgba(0, 0, 255, 0.2); */
-}
-
-.ui {
-	position: fixed;
-	background: rgba(0, 0, 0, 0.1);
-	width: 100vw;
-	display: flex;
-	flex-direction: column;
-	/* justify-content: space-around; */
-	padding: 2vmin;
-}
-.uirow {
-	display: flex;
-	justify-content: space-around;
-	padding: 2vmin;
-}
-#tui {
-	top: 0;
-}
-#bui {
-	bottom: 0;
-}
-
-button {
-	border-radius: 2em;
-	border: solid 1px #555;
-	background: rgba(255, 255, 255, 0.7);
-	color: #000;
-	padding: 2vmin;
-	font-size: inherit;
-	cursor: pointer;
-}
-button:hover {
-	background: white;
-}
-button, #blist {
-	transition: all ease-in-out 0.2s;
-}
-#blist {
-	display: none;
-	padding: 1em auto;
-	max-width: 30em;
-	background: white;
-}
-.bselected #blist {
-	display: block;
-}
-
-.bselected #build,
-.looping #pause,
-.creating #cancel,
-.bselected #blist,
-.pop #jobs {
-	transform: scale(1);
-	max-height: 100vh;
-}
-#pause, #build, #cancel, #blist, #jobs,
-.looping #play,
-.creating #build,
-.pop #restart {
-	transform: scale(0);
-	max-height: 0;
-}
-
-
-
-.building, .building-connector {
-	fill: #fff;
-	stroke: #555;
-	stroke-width: 2px;
-}
-.building:hover {
-	stroke: #000;
-}
-
-.selectedb > * {
-	stroke: #0ff;
-	stroke-width: 4px;
-}
-
-.road {
-	stroke: #b99;
-	stroke-width: 4px;
-}</style></head> 
-<body><script> 
-eval(Function("[M='EOv^nFy^HzYB}Dd^Ap|OsVPPMKEdy{HvL]YnC@hZr|eFGK{XgGSVZizwnl`Ua|~gqlrFHJcMYyBrfecyX?HrAWWzSrsDeWF__iF^MjfZGavf[l`hMpIo~^jgnFUf|Gp^VjXG@DRyukGrg?ZrqoYnX^yR@MmHY|UjyLtMibqTyNoUEeLI_Xw~]}nZGZsWEKyNRwl}DpFWv|kGAbDxSNJBMUAl_vjVAiZYk[^}nXBTwq[TGPQ[C[WYnizrSq~YK|[kWHE^[{[TssWBAYI[@hhQEvqK[bMVKgPvoeTSm]`rCQWe~DM^_CQgikkT@llmlOHPo`{Af{F[fjPUC[imkPRjCngNumGAQ|RtkSbvPfxz]?UwKxpU[r^yFep?z~PT@LxYKlxIH_|wQW]bHgWIQ[`xSy`oamat]FwbkxxzQPh^^ZMMr^XdCUJgU@lNThn[mn}TNvco~c?^_]`Cdb{dwYPbfurnS_pRVN}ZOsF[|HDOFvcm{@t[O|oZRmIcs{drOn_VQNUoJXrakcshDRCcRawYuF|wzmmfkNasJmv@D?UhEm?QnPlR`j@WyPyRD_EuBtnK@Lacz}cEPcOGQuCQjm|~PUlnMEdtzvnewLhdQ`N|ZRTbbEH?YChVNwzVdIE_C{tzY_Zyp|C?BupUDvGDtbbCvQMAgT^KwdgadWXt?sTKO^tJlLxry@`bCmD{EEFUMlBrNReIn`HX_PTjZlLt}YmxT{K^ylwM{OPZoOGNbz}UHcet}TgGuxrrFyNYYviJOUoxwfQtOLx?skEXY_EN`l?KodYFYI}}j|zMvoo[LyyzKjnhip{nP`?CUJXEkNGfmDyc}favMOICewTPC]Q@XG~zCZHG_T^_LDEAl~Cp]H]qG@Poekuk{]fA_KX]sqJk]eodhd[fKpp_jjzK~Ad}KwIw}|zHRO@JWol[`InNk@EI_klwRfH[pULVBJMSjjK{|rxGPQtpHeeeLLLRcixntGVDFSkAwcV[Ic{NYSXdBhrBe[}JvjzSo`fG{mJ`ieFaXBGdCpL~reG`ZAza~mGZxvJOAkPHy@ah[Zf]kjgzKeAp?]eTZjbnW[iGMoQdxzlzcSrwKsYCWvoVwAoKNi[]q~SGr?pELFaNiebtbmMCJKZEtsfHd|C@su]OlX[xz|sFSCZxhoclwM]WpYpse`aWdCjJdCDK}VMMWacmVNFL{lXIIdeRaV`_^tUtKW{m~iaz[L[fWsLdY]NPh^l^Znxm~j{[N]~eQHTqEQKJVuS^HfdivM^B^KHXo|VNVFQK{~[|aUcoqbS@?JduSyKDtDQmTXsDoa]eXirYc_Tq[kh?Zk~{ZtnByiIg^YDrXSUAQlGtbSt`rmgOTADTGBcDl?qFSScaNQ_JQumaUC@WKbp`FbFjEnFLnB~cYkop}nxioLocUEQY|wauX`_u}XtWfqVw`n}awj{jsZRVfgyvZ{Ki`FsEicrdpzzvdK`XVw^_FygrQn~QBklCwbuUxPFadriE~si@gRUAmSB[yIyTnz`dSyLezSI`~yI{BN}jksY`js^k}Y@~dAbI?l@CIvyY~_j]_GMGhscWAn[ocCP@~_ZbPcpCbSpFfC_PJUVOkqrYU_iBefb|[ipbadD{CmIpAebLzGJIbv?i|XDUPrE`zLD`BKZ@NqtcmhAoGgbA^Q@w?ebPIaU_{rV~[oZWheHOuyzYsA@{Stk@COQzfPYv_flzcDbGz[C|qytOv?MYn@YBOg`m@GcF]Y^tNMNH@AcBZOi@J_}oIZvyWet[VlR{GCrFz_scRlFfNvxYM~p`kDPK?aOGycJ]lvXS|[pvlAMwiIPYwNWxHUB{CIRjSVf@s]WiHW}nsrT`XhJ}b{eKgUALWJDPh@dj`jJCc]QNQ@OldqVHcKN|{VNRe[qzEfpU'",...']charCodeAtUinyxp',"for(;e<3529;c[e++]=x-128)for(x=1;x<128;n=p.map((i,y)=>(t=r[i]*2+1,t=Math.log(t/(h-t)),A-=a[y]*t,t/500)),A=~-h/(1+Math.exp(A))|1,U=o%h<A,o=o%h+(U?A:h-A)*(o>>15)-!U*A,p.map((i,y)=>(t=r[i]+=(U*h/2-r[i]<<15)/((C[i]+=C[i]<5)+.1)>>15,a[y]+=n[y]*(U-A/h))),x=x*2+U)for(p='010202103203210431053105410642065206541'.split(A=0).map((i,y)=>(t=0,[...i].map((i,y)=>(t=t*997+(c[e-i]|0)|0)),h*128-1&t*997+x)*12+y);o<h*128;o=o*64|M.charCodeAt(d++)&63);return String.fromCharCode(...c)")([],[],1<<15,[0,0,0,0,0,0,0,0,0,0,0,0],new Uint16Array(51e6).fill(1<<13),new Uint8Array(51e6),0,0,0))</script> 
-<main><div id=w draggable=true>
-    <svg id=ws viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
-    <canvas id=wc></canvas>
-</div></main>

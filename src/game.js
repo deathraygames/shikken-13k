@@ -5,6 +5,7 @@ const W = 'wood';
 const T = true;
 const F = false;
 const N = null;
+const MEEP_SPEED = 100 * (1/1000); // pixels per second * s/ms
 
 const $ = (q) => document.querySelector(q);
 const $id = (id) => document.getElementById(id);
@@ -19,9 +20,11 @@ const setAttributes = (el, o) => Object.keys(o).forEach((k) => el.setAttribute(k
 // From LittleJs
 const rand = (a = 1, b = 0) => b + (a - b) * Math.random();
 const randInt = (a = 1, b = 0) => rand(a, b)|0;
+const randSign = () => (rand(2)|0) * 2 - 1;
 
 const resourceTypes = {
 	grain: { shape: 'polygon', sides: 5, },
+	rice: { shape: 'polygon', sides: 4, },
 	stone: { shape: 'polygon', sides: 5, },
 	wood: { shape: 'polygon', sides: 5, },
 };
@@ -85,6 +88,25 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 	return b;
 }
 
+function addMeeple(mParam = {}) {
+	const m = {
+		key: getRandomKey('M'),
+		job: 'idle',
+		hp: 100,
+		carry: N,
+		weapon: N,
+		buildingKey: N, // goal
+		path: [],
+		...getRandomWorldLocation(),
+		...mParam,
+	};
+	if (g.meeples[m.key]) throw new Error('Existing meeple');
+	console.log('Adding meeple', m);
+	g.meeples[m.key] = m;
+	g.meepleKeys.push(m.key);
+	return m;
+}
+
 /* ------------------------------ Rendering ------------------ */
 
 function renderCanvas(ctx) {
@@ -122,6 +144,18 @@ function addRoadSvg(r, layer) {
 	return line;
 }
 
+function addMeepleSvg(m, layer) {
+	const circle = createAppendSvg('circle', layer);
+	circle.id = m.key;
+	setAttributes(circle, {
+		cx: 0, // m.x,
+		cy: 0, // m.y,
+		r: 7, // MEEPLE_SIZE
+		class: `meeple meeple-${m.job}`,
+	});
+	return circle;
+}
+
 function renderBuildingResources(b, bEl) {
 	b.resources.forEach((res) => {
 		// bEl.
@@ -143,6 +177,13 @@ function renderSvg(layers) {
 		let rEl = $id(key);
 		if (!rEl) rEl = addRoadSvg(r, layers.road);
 	});
+	g.meepleKeys.forEach((key) => {
+		const m = g.meeples[key];
+		let mEl = $id(key);
+		if (!mEl) mEl = addMeepleSvg(m, layers.meeple);
+		mEl.style.cx = m.x;
+		mEl.style.cy = m.y;
+	});
 }
 
 function renderUi() {
@@ -150,7 +191,7 @@ function renderUi() {
 	classes.toggle('bselected', g.selectedBuildingKey);
 	classes.toggle('looping', g.looping);
 	classes.toggle('creating', g.creating);
-	classes.toggle('pop', g.totalMeeples > 0);
+	classes.toggle('pop', g.meepleKeys.length > 0);
 	// Update countdown
 	if (!g.countdownEl) g.countdownEl = $id('cd');
 	let cd = g.countdown;
@@ -161,6 +202,11 @@ function renderUi() {
 	// List
 	if (g.creating) {
 		$id('blist').innerHTML = Object.keys(buildingTypes).map((key) => `<li>${key}</li>`).join('');
+	}
+	// Assigning Jobs
+	if (g.assigning) {
+
+		// TODO: Set max
 	}
 }
 
@@ -175,22 +221,32 @@ function render() {
 
 /* ------------------------------ Looping ------------------ */
 
+function simulate(delta) {
+	// TODO: Do updating of world
+	g.meepleKeys.forEach((key) => {
+		const m = g.meeples[key];
+		if (m.job === 'idle') {
+			const dist = delta * MEEP_SPEED * 0.5;
+			m.x += dist * randSign();
+			m.y += dist * randSign();
+		}
+	});
+}
+
 function loop() {
 	if (!g.looping) return;
 	const now = Number(new Date());
 	const delta = (g.lastTime) ? now - g.lastTime : 0;
 	g.lastTime = now;
 	g.countdown -= delta;
-	// TODO: Do updating of world
-
-	// TODO: Get total of meeples: totalMeeples
-
-	renderUi();
+	simulate(delta);
+	render();
 	setTimeout(loop, 100);
 }
 
 function startLoop() {
 	g.looping = true;
+	g.lastTime = 0;
 	loop();
 }
 
@@ -294,6 +350,9 @@ function start() {
 	setupEvents(g.world);
 	const b = addBuilding({ type: 'connector' });
 	addBuilding({ type: 'connector' }, b.key);
+	addMeeple();
+	addMeeple();
+	addMeeple();
 	render(w);
 }
 
@@ -304,7 +363,8 @@ const g = window.g = {
 	world: {},
 	buildings: {},
 	buildingKeys: [],
-	freeMeeples: {},
+	meeples: {},
+	meepleKeys: [],
 	roads: {},
 	roadKeys: [],
 	selectedBuildingKey: N,
@@ -313,7 +373,6 @@ const g = window.g = {
 	countdown: 300000, // 5 minutes * 60 seconds/min * 1000 ms/sec
 	looping: F,
 	creating: F,
-	totalMeeples: 0,
 	start,
 };
 document.addEventListener('DOMContentLoaded', g.start);

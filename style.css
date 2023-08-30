@@ -93,6 +93,9 @@ button, #blist {
 }
 
 
+.meeple {
+	transition: all linear 0.1s;
+}
 
 .building, .building-connector {
 	fill: #fff;
