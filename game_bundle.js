@@ -2,9 +2,12 @@
 	'use strict';
 
 	const WORLD_SIZE = 1000;
-	const G = 'grain';
-	const S = 'stone';
-	const W = 'wood';
+	const Gr = 'grain',
+		Ri = 'rice',
+		Ka = 'karma',
+		S = 'stone',
+		Or = 'ore',
+		W = 'wood';
 	const T = true;
 	const F = false;
 	const N = null;
@@ -12,6 +15,7 @@
 
 	const $ = (q) => document.querySelector(q);
 	const $id = (id) => document.getElementById(id);
+	const on = (el, type, fn) => el.addEventListener(type, fn);
 	const createSvg = (a) => document.createElementNS('http://www.w3.org/2000/svg', a);
 	const createAppendSvg = (a, p) => {
 		const el = createSvg(a);
@@ -24,14 +28,78 @@
 	const rand = (a = 1, b = 0) => b + (a - b) * Math.random();
 	const randInt = (a = 1, b = 0) => rand(a, b)|0;
 	const randSign = () => (rand(2)|0) * 2 - 1;
+	const JOBS = [
+		'idle',
+		'prod',
+		'carr',
+		'defe',
+		'spir',
+	];
 
 	const buildingTypes = {
 		// r = radius, cap = resource capacity, mm = max meeples
-		connector: { r: 10, cap: 4, cost: [S] },
-		tower: { r: 14, cap: 2, cost: [S, W, W]},
-		farm: { r: 20, cap: 10, cost: [W, W] },
-		barracks: { r: 20, cap: 2, cost: [W, W] },
-		// ...
+		outpost: {
+			r: 10, cap: 19, cost: [W, W, S, S],
+			defenderMax: 2, popMax: 10,
+		},
+		connector: {
+			r: 10, cap: 4, cost: [S],
+			upgrades: ['stoneMine', 'grainFarm', 'tower', 'shrine', 'farmHouse', 'woodCutter', 'stockpile'],
+		},
+		stockpile: {
+			r: 30, cap: 20, cost: [S, W],
+		},
+		woodCutter: {
+			r: 10, cap: 6, cost: [W],
+			input: [], output: [W], rate: 2,
+		},
+		stoneMine: {
+			r: 10, cap: 6, cost: [W],
+			input: [], output: [W], rate: 2,
+			upgrades: ['oreMine'],
+		},
+		oreMine: {
+			r: 10, cap: 6, cost: [W],
+			input: [], output: [Or], rate: 2,
+		},
+		tower: {
+			r: 14, cap: 2, cost: [S, W, W],
+			defenderMax: 5,
+			upgrades: ['fortress'],
+		},
+		fortress: {
+			r: 20, cap: 4, cost: [S, S, S, S, W],
+			defenderMax: 8,
+		},
+		grainFarm: {
+			r: 20, cap: 10, cost: [W, W],
+			input: [], output: [Gr], rate: 2,
+			upgrades: ['riceFarm'],
+		},
+		riceFarm: {
+			r: 10, cap: 6, cost: [W],
+			input: [], output: [Ri], rate: 2,
+		},
+		shrine: {
+			r: 10, cap: 6, cost: [W],
+			input: [Ri], output: [Ka], rate: 2,
+			upgrades: ['temple'],
+		},
+		temple: {
+			r: 10, cap: 6, cost: [W],
+			input: [Ri], output: [Ka, Ka],
+		},
+		farmHouse: { // noka 
+			r: 10, cap: 6, cost: [W],
+			input: [Gr], output: ['meeple'],
+			popMax: 4,
+			upgrades: ['urbanHouse'],
+		},
+		urbanHouse: { // machiya
+			r: 10, cap: 6, cost: [W],
+			input: [Ri], output: ['meeple'],
+			popMax: 8,
+		},
 	};
 
 	function getRandomWorldLocation() {
@@ -46,13 +114,15 @@
 		].join('-');
 	}
 
+	/* ------------------------------ Adding ------------------ */
+
 	function addRoad(bKey1, bKey2, rParam = {}) {
 		const bKey1From = (bKey1 < bKey2);
 		const r = {
 			key: getRandomKey('R'),
 			from: (bKey1From) ? bKey1 : bKey2,
 			to: (bKey1From) ? bKey2 : bKey1,
-			length: 0, // TODO
+			// length: 0,
 			...rParam,
 		};
 		if (g.roads[r.key]) throw new Error('Existing building');
@@ -69,7 +139,8 @@
 			// x: 0,
 			// y: 0,
 			on: true,
-			resources: [W, S, W, G],
+			resources: [W, S, W, Gr],
+			refresh: false, // remove rendered element and recreate
 			// TODO: maintain links (roads) to other buildings so it is easy to find paths
 			...getRandomWorldLocation(),
 			...bParam,
@@ -101,6 +172,74 @@
 		g.meeples[m.key] = m;
 		g.meepleKeys.push(m.key);
 		return m;
+	}
+
+	/* ------------------------------ Jobs ------------------ */
+
+	function getBlankJobCounts() {
+		return JOBS.reduce((o, j) => ({ ...o, [j]: 0 }), {});
+	}
+
+	function getJobCounts() {
+		return g.meepleKeys.reduce((counts, key) => {
+			const m = g.meeples[key];
+			counts[m.job] = (counts[m.job] || 0) + 1;
+			return counts;
+		}, getBlankJobCounts());
+	}
+
+	function getAdjustedJobCounts(job, val) {
+		const currJobCounts = getJobCounts();
+		const desiredJobCounts = {
+			...currJobCounts,
+			[job]: val,
+		};
+		const diff = desiredJobCounts[job] - currJobCounts[job];
+		if (diff <= 0) {
+			// If we're removing jobs, it's easy - we just make them idle
+			desiredJobCounts.idle += diff * -1;
+			return desiredJobCounts;
+		}
+		// Otherwise we're assigning jobs so we need to find the counts
+		let left = diff;
+		if (job !== 'idle') {
+			const takeFromIdle = Math.min(currJobCounts.idle, diff);
+			left -= takeFromIdle;
+			desiredJobCounts.idle -= takeFromIdle;
+		}
+		if (left <= 0) return desiredJobCounts;
+		const leftJobs = JOBS.reduce((arr, j) => {
+			if (j !== job && j !== 'idle') arr.push(j);
+			return arr;
+		}, []);
+		leftJobs.forEach((j, i) => {
+			const leftJobCount = (leftJobs.length - i) || 1;
+			const remove = Math.min(
+				Math.ceil(left / leftJobCount),
+				currJobCounts[j],
+			);
+			left -= remove;
+			desiredJobCounts[j] -= remove;
+		});
+		return desiredJobCounts;
+	}
+
+	function assignJobs(desiredJobCounts = {}) {
+		const currJobCounts = getBlankJobCounts();
+		const stillNeedJob = (j) => ((currJobCounts[j] || 0) < desiredJobCounts[j]);
+		const incrementJob = (j) => currJobCounts[j] = (currJobCounts[j] || 0) + 1;
+		g.meepleKeys.forEach((key) => {
+			const m = g.meeples[key];
+			// Still need this job, so keep job and increment count
+			if (stillNeedJob(m.job)) {
+				incrementJob(m.job);
+				return;
+			}
+			// Give the meeple a new job
+			m.job = JOBS.find(stillNeedJob) || 'idle';
+			incrementJob(m.job);
+		});
+		console.log('Meeples assigned jobs:', g.meeples, 'desired:', desiredJobCounts, 'final:', currJobCounts);
 	}
 
 	/* ------------------------------ Rendering ------------------ */
@@ -164,6 +303,10 @@
 		g.buildingKeys.forEach((key) => {
 			const b = g.buildings[key];
 			let bEl = $id(key);
+			if (bEl && b.refresh) {
+				bEl.remove();
+				bEl = N;
+			}
 			if (!bEl) bEl = addBuildingSvg(b, layers.building);
 			renderBuildingResources(b);
 			bEl.classList.toggle('selectedb', (key === g.selectedBuildingKey));
@@ -182,11 +325,20 @@
 		});
 	}
 
+	function loopJobs(fn) {
+		JOBS.forEach((job) => {
+			const el = $(`#jr-${job}`);
+			const input = el.querySelector('[type="range"]');
+			fn(job, input, el);
+		});
+	}
+
 	function renderUi() {
 		const classes = $('main').classList;
 		classes.toggle('bselected', g.selectedBuildingKey);
 		classes.toggle('looping', g.looping);
 		classes.toggle('creating', g.creating);
+		classes.toggle('assigning', g.assigning);
 		classes.toggle('pop', g.meepleKeys.length > 0);
 		// Update countdown
 		if (!g.countdownEl) g.countdownEl = $id('cd');
@@ -200,7 +352,18 @@
 			$id('blist').innerHTML = Object.keys(buildingTypes).map((key) => `<li>${key}</li>`).join('');
 		}
 		// Assigning Jobs
-		if (g.assigning) ;
+		if (g.assigning) {
+			const counts = getJobCounts();
+			const maxMeeples = g.meepleKeys.length;
+			const maxDefenders = 1;
+			loopJobs((job, input, el) => {
+				const num = el.querySelector('b');
+				num.innerText = counts[job];
+				input.setAttribute('max', (job === 'defe') ? maxDefenders : maxMeeples);
+				input.setAttribute('value', counts[job]);
+				input.value = counts[job];
+			});
+		}
 	}
 
 	function render() {
@@ -285,13 +448,14 @@
 
 	function tapBottomUi(e) {
 		const t = e.target;
-		console.log(t);
+		// console.log(t);
 		const taps = {
 			'#play': startLoop,
 			'#pause': stopLoop,
 			'#build': () => g.creating = T,
 			'#cancel': () => g.creating = F,
 			'#restart': () => window.location.reload(),
+			'#jobs': () => g.assigning = !(g.assigning),
 		};
 		Object.keys(taps).forEach((key) => {
 			if (t.closest(key)) taps[key]();
@@ -302,24 +466,33 @@
 	function setupEvents(w) {
 		const { el } = w;
 		let dragEvent;
-		el.addEventListener('dragstart', (e) => {
+		on(el, 'dragstart', (e) => {
 			e.dataTransfer.setData('text/plain', 'w'); // this is required to be draggable
 			e.dataTransfer.effectAllowed = 'move';
 			// console.log('start', e);
 			dragEvent = e;
 		});
-		el.addEventListener('drop', (e) => {
+		on(el, 'drop', (e) => {
 			// console.log('drop', e);
 			w.x += e.clientX - dragEvent.clientX;
 			w.y += e.clientY - dragEvent.clientY;
 			render();
 		});
-		$('main').addEventListener('dragover', (e) => {
+		on($('main'), 'dragover', (e) => {
 			e.preventDefault(); // this signifies that things can be dropped here
 		});
-		el.addEventListener('pointerdown', tapWorld);
-		$id('bui').addEventListener('pointerdown', tapBottomUi);
-		$id('tui').addEventListener('pointerdown', tapTopUi);
+		on(el, 'pointerdown', tapWorld);
+		on($id('bui'), 'pointerdown', tapBottomUi);
+		on($id('tui'), 'pointerdown', tapTopUi);
+		// Job assignment UI
+		loopJobs((job, input) => {
+			on(input, 'change', (e) => {
+				const desiredJobCounts = getAdjustedJobCounts(job, Number(input.value) || 0);
+				console.log('Desiring', desiredJobCounts);
+				assignJobs(desiredJobCounts);
+				renderUi();
+			});
+		});
 	}
 
 	function start() {
@@ -366,7 +539,10 @@
 		countdown: 300000, // 5 minutes * 60 seconds/min * 1000 ms/sec
 		looping: F,
 		creating: F,
+		assigning: F,
 		start,
+		getJobCounts,
+		assignJobs,
 	};
 	document.addEventListener('DOMContentLoaded', g.start);
 

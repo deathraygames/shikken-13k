@@ -3,12 +3,24 @@ body {
 	margin: 0;
 	padding: 0;
 	font-size: calc(14px + 1vmin);
+	font-family: 'Trebuchet MS', 'Lucida Sans', Arial, sans-serif;
 }
 main {
 	position: fixed;
 	width: 100vw;
 	height: 100wh;
 }
+
+ul {
+	padding: 0;
+	margin: 0;
+}
+li {
+	display: block;
+	padding: calc(0.5em + 1vh) 0;
+}
+
+
 #w {
 	width: 1000px;
 	height: 1000px;
@@ -37,6 +49,7 @@ main {
 	flex-direction: column;
 	/* justify-content: space-around; */
 	padding: 2vmin;
+	box-sizing: border-box;
 }
 .uirow {
 	display: flex;
@@ -79,11 +92,12 @@ button, #blist {
 .looping #pause,
 .creating #cancel,
 .bselected #blist,
-.pop #jobs {
+.pop #jobs,
+.assigning #jass {
 	transform: scale(1);
 	max-height: 100vh;
 }
-#pause, #build, #cancel, #blist, #jobs,
+#pause, #build, #cancel, #blist, #jobs, #jass,
 .looping #play,
 .creating #build,
 .creating #blist,
@@ -92,9 +106,66 @@ button, #blist {
 	max-height: 0;
 }
 
+/* Jobs assignment */
+#jass {
+	text-align: right;
+	padding: 1vmin;
+	background: #fff;
+}
+#jass ul {
+	padding: 0;
+	margin: 0;
+}
+#jass li {
+	display: block;
+	padding: 1em 0;
+}
+#jass b {
+	display: inline-block;
+	width: 2em;
+	text-align: center;
+}
+#jass label {
+	display: inline-block;
+	width: 16em;
+	text-align: right;
+}
+#jass input[type="range"] {
+	width: 16em;
+}
 
+.up-action {
+	cursor: pointer;
+	border-bottom: solid 1px #666;
+	padding: 0.5em 1em;
+	display: flex;
+	justify-content: space-between;
+}
+.up-action:hover {
+	background: #ffffcc;
+}
+
+
+/* --- SVG --- */
 .meeple {
 	transition: all linear 0.1s;
+	stroke: #000;
+	stroke-width: 3px;
+}
+.mj-idle {
+	fill: #777;
+}
+.mj-prod {
+	fill: #0c5;
+}
+.mj-carr {
+	fill: #cc0;
+}
+.mj-defe {
+	fill: #c50;
+}
+.mj-spir {
+	fill: #05c;
 }
 
 .building, .building-connector {
@@ -115,4 +186,47 @@ button, #blist {
 .road {
 	stroke: #b99;
 	stroke-width: 4px;
+}
+
+.b-outpost {
+	fill: #fff;
+}
+.b-connector {
+	fill: #fff;
+}
+.b-stockpile {
+	fill: #fff;
+}
+.b-woodCutter {
+	fill: #9b9;
+}
+.b-stoneMine {
+	fill: #663;
+}
+.b-oreMine {
+	fill: #b83;
+}
+.b-tower {
+	fill: #b99;
+}
+.b-fortress {
+	fill: #a55;
+}
+.b-grainFarm {
+	fill: #7a7;
+}
+.b-riceFarm {
+	fill: #6c6;
+}
+.b-shrine {
+	fill: #4df;
+}
+.b-temple {
+	fill: #09f;
+}
+.b-farmHouse {
+	fill: #cca;
+}
+.b-urbanHouse {
+	fill: #bb9;
 }
