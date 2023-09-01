@@ -23,6 +23,12 @@
 		return el;
 	};
 	const setAttributes = (el, o) => Object.keys(o).forEach((k) => el.setAttribute(k, o[k]));
+	const setHtml = (sel, html) => {
+		const el = $(sel);
+		if (el.innerHTML === html) return false;
+		el.innerHTML = html;
+		return true;
+	};
 
 	// From LittleJs
 	const rand = (a = 1, b = 0) => b + (a - b) * Math.random();
@@ -34,70 +40,90 @@
 		'carr',
 		'defe',
 		'spir',
-	];
+	],
+		JOB_NAMES = [
+			'Wanderer (Idle)',
+			'Farmer/Artisan (Production)',
+			'Peasant (Carrying)',
+			'Samurai (Defenders)',
+			'Monk/Pilgrim (Spiritualist)',
+		];
 
 	const buildingTypes = {
 		// r = radius, cap = resource capacity, mm = max meeples
 		outpost: {
-			r: 10, cap: 19, cost: [W, W, S, S],
-			defenderMax: 2, popMax: 10,
+			name: 'Outpost',
+			r: 20, cap: 19, cost: [W, W, S, S],
+			defMax: 2, popMax: 10,
 		},
 		connector: {
 			r: 10, cap: 4, cost: [S],
 			upgrades: ['stoneMine', 'grainFarm', 'tower', 'shrine', 'farmHouse', 'woodCutter', 'stockpile'],
 		},
 		stockpile: {
-			r: 30, cap: 20, cost: [S, W],
+			name: 'Stockpile',
+			r: 40, cap: 20, cost: [S, W],
 		},
 		woodCutter: {
-			r: 10, cap: 6, cost: [W],
+			name: 'Woodcutter',
+			r: 20, cap: 6, cost: [W],
 			input: [], output: [W], rate: 2,
 		},
 		stoneMine: {
-			r: 10, cap: 6, cost: [W],
+			name: 'Stone Mine',
+			r: 20, cap: 6, cost: [W],
 			input: [], output: [W], rate: 2,
 			upgrades: ['oreMine'],
 		},
 		oreMine: {
-			r: 10, cap: 6, cost: [W],
+			name: 'Ore Mine',
+			r: 30, cap: 6, cost: [W],
 			input: [], output: [Or], rate: 2,
 		},
 		tower: {
+			name: 'Watchtower',
 			r: 14, cap: 2, cost: [S, W, W],
-			defenderMax: 5,
+			defMax: 5,
 			upgrades: ['fortress'],
 		},
 		fortress: {
-			r: 20, cap: 4, cost: [S, S, S, S, W],
-			defenderMax: 8,
+			name: 'Fortress',
+			r: 24, cap: 4, cost: [S, S, S, S, W],
+			defMax: 8,
 		},
 		grainFarm: {
+			name: 'Grain farm',
 			r: 20, cap: 10, cost: [W, W],
 			input: [], output: [Gr], rate: 2,
 			upgrades: ['riceFarm'],
 		},
 		riceFarm: {
-			r: 10, cap: 6, cost: [W],
+			name: 'Rice farm',
+			r: 24, cap: 6, cost: [W],
 			input: [], output: [Ri], rate: 2,
 		},
 		shrine: {
-			r: 10, cap: 6, cost: [W],
+			name: 'Shrine',
+			r: 16, cap: 6, cost: [W],
 			input: [Ri], output: [Ka], rate: 2,
 			upgrades: ['temple'],
 		},
 		temple: {
-			r: 10, cap: 6, cost: [W],
-			input: [Ri], output: [Ka, Ka],
+			name: 'Temple',
+			r: 32, cap: 6, cost: [W],
+			input: [Ri], output: [Ka, Ka], rate: 2,
 		},
-		farmHouse: { // noka 
-			r: 10, cap: 6, cost: [W],
-			input: [Gr], output: ['meeple'],
+		farmHouse: { // noka
+			name: 'Noka (farmhouse)',
+			r: 20, cap: 6, cost: [W],
+			input: [Gr], output: ['meeple'], rate: 1,
 			popMax: 4,
 			upgrades: ['urbanHouse'],
 		},
 		urbanHouse: { // machiya
-			r: 10, cap: 6, cost: [W],
-			input: [Ri], output: ['meeple'],
+			name: 'Machiya (urban house)',
+			r: 30, cap: 6, cost: [W],
+			input: [Ri], output: ['meeple'], rate: 1,
 			popMax: 8,
 		},
 	};
@@ -114,7 +140,24 @@
 		].join('-');
 	}
 
+	/* ------------------------------ Looping ------------------ */
+
+	// function loopBuildings(fn) {
+	// 	g.buildingKeys.forEach((key, i) => {
+	// 		const b = g.buildings[key];
+	// 		fn(b, key, i);
+	// 	});
+	// }
+
 	/* ------------------------------ Adding ------------------ */
+
+	function getPopMax() {
+		return 1 + g.buildingKeys.reduce((sum, k) => sum + (g.buildings[k].popMax || 0), 0);
+	}
+
+	function getDefenderMax() {
+		return g.buildingKeys.reduce((sum, k) => sum + (g.buildings[k].defMax || 0), 0);
+	}
 
 	function addRoad(bKey1, bKey2, rParam = {}) {
 		const bKey1From = (bKey1 < bKey2);
@@ -132,12 +175,26 @@
 		return r;
 	}
 
+	function resetProductionCooldown(b, extra = 0) {
+		const { rate } = buildingTypes[b.type];
+		if (!rate) {
+			b.prodCool = 0;
+			return;
+		}
+		const extraNum = (Number.isNaN(extra)) ? 0 : extra;
+		b.prodCool = (
+			60000 // 60000 ms per 1 minute
+			* (1 / rate) // rate = # of things created in 1 minute
+		) + extraNum; 
+	}
+
 	function addBuilding(bParam = {}, fromBuildingKey = N) {
 		const b = {
 			key: getRandomKey('B'),
 			type: 'connector',
 			// x: 0,
 			// y: 0,
+			prodCool: 0,
 			on: true,
 			resources: [W, S, W, Gr],
 			refresh: false, // remove rendered element and recreate
@@ -145,6 +202,7 @@
 			...getRandomWorldLocation(),
 			...bParam,
 		};
+		resetProductionCooldown(b);
 		if (g.buildings[b.key]) throw new Error('Existing building');
 		console.log('Adding building', b);
 		g.buildings[b.key] = b;
@@ -156,6 +214,10 @@
 	}
 
 	function addMeeple(mParam = {}) {
+		if (g.meepleKeys.length >= getPopMax()) {
+			console.warn('Could not add another meeple');
+			return;
+		}
 		const m = {
 			key: getRandomKey('M'),
 			job: 'idle',
@@ -242,6 +304,23 @@
 		console.log('Meeples assigned jobs:', g.meeples, 'desired:', desiredJobCounts, 'final:', currJobCounts);
 	}
 
+	function payCost(b, cost) {
+		// TODO: affordCost check
+		// TODO: start at building and pay cost by consuming resources
+		return true;
+	}
+
+	function upgradeBuilding(bKey, upTypeKey) {
+		const b = g.buildings[bKey];
+		const { upgrades = [] } = buildingTypes[b.type];
+		if (!upgrades.includes(upTypeKey)) throw new Error(`Unknown upTypeKey`);
+		payCost(b, buildingTypes[upTypeKey].cost);
+		b.type = upTypeKey;
+		b.refresh = true;
+		resetProductionCooldown(b);
+		renderBuildings();
+	}
+
 	/* ------------------------------ Rendering ------------------ */
 
 	function renderCanvas(ctx) {
@@ -251,7 +330,6 @@
 
 	function addBuildingSvg(b, layer) {
 		const type = buildingTypes[b.type];
-		console.log(b, type);
 		const group = createAppendSvg('g', layer);
 		group.id = b.key;
 		const circle = createAppendSvg('circle', group);
@@ -259,7 +337,7 @@
 			cx: b.x,
 			cy: b.y,
 			r: type.r,
-			class: `building building-${b.type}`,
+			class: `building b-${b.type}`,
 		});
 		return group;
 	}
@@ -286,7 +364,7 @@
 			cx: 0, // m.x,
 			cy: 0, // m.y,
 			r: 7, // MEEPLE_SIZE
-			class: `meeple meeple-${m.job}`,
+			class: `meeple mj-${m.job}`,
 		});
 		return circle;
 	}
@@ -298,19 +376,24 @@
 		});
 	}
 
-	function renderSvg(layers) {
-		// TODO: render roads as lines
+	function renderBuildings() {
+		const { layers } = g.world;
 		g.buildingKeys.forEach((key) => {
 			const b = g.buildings[key];
 			let bEl = $id(key);
 			if (bEl && b.refresh) {
 				bEl.remove();
 				bEl = N;
+				b.refresh = F;
 			}
 			if (!bEl) bEl = addBuildingSvg(b, layers.building);
 			renderBuildingResources(b);
 			bEl.classList.toggle('selectedb', (key === g.selectedBuildingKey));
 		});
+	}
+
+	function renderSvg(layers) {
+		renderBuildings();
 		g.roadKeys.forEach((key) => {
 			const r = g.roads[key];
 			let rEl = $id(key);
@@ -320,6 +403,8 @@
 			const m = g.meeples[key];
 			let mEl = $id(key);
 			if (!mEl) mEl = addMeepleSvg(m, layers.meeple);
+			// mEl.className = `meeple mj-${m.job}`;
+			mEl.setAttribute('class', `meeple mj-${m.job}`);
 			mEl.style.cx = m.x;
 			mEl.style.cy = m.y;
 		});
@@ -328,8 +413,29 @@
 	function loopJobs(fn) {
 		JOBS.forEach((job) => {
 			const el = $(`#jr-${job}`);
-			const input = el.querySelector('[type="range"]');
-			fn(job, input, el);
+			const input = el.querySelector('input[type="range"]');
+			const numEl = el.querySelector('b');
+			fn(job, input, el, numEl);
+		});
+	}
+
+	function renderJobAssignment() {
+		if (!g.assigning) return;
+		const counts = getJobCounts();
+		const maxMeeples = g.meepleKeys.length;
+		const maxDefenders = Math.min(maxMeeples, getDefenderMax());
+		loopJobs((job, input, el, numEl) => {
+			const n = counts[job];
+			numEl.innerText = n;
+			const max = (job === 'defe') ? maxDefenders : maxMeeples;
+			if (input.max !== max) {
+				input.setAttribute('max', max);
+				input.max = max;
+			}
+			if (input.value !== n) {
+				input.setAttribute('value', n);
+				input.value = n;
+			}
 		});
 	}
 
@@ -348,21 +454,21 @@
 		const sec = Math.floor(cd * (1/1000));
 		g.countdownEl.innerText = `${mins}:${sec < 10 ? '0' : ''}${sec}`;
 		// List
-		if (g.creating) {
-			$id('blist').innerHTML = Object.keys(buildingTypes).map((key) => `<li>${key}</li>`).join('');
-		}
-		// Assigning Jobs
-		if (g.assigning) {
-			const counts = getJobCounts();
-			const maxMeeples = g.meepleKeys.length;
-			const maxDefenders = 1;
-			loopJobs((job, input, el) => {
-				const num = el.querySelector('b');
-				num.innerText = counts[job];
-				input.setAttribute('max', (job === 'defe') ? maxDefenders : maxMeeples);
-				input.setAttribute('value', counts[job]);
-				input.value = counts[job];
-			});
+		if (g.selectedBuildingKey) {
+			const b = g.buildings[g.selectedBuildingKey];
+			const { upgrades } = buildingTypes[b.type];
+			setHtml(
+				'#blist',
+				(upgrades)
+					? upgrades.map((key) => {
+						const { name = key, cost } = buildingTypes[key];
+						return `<li class=up-action data-upgrade="${key}" data-building="${g.selectedBuildingKey}">
+						<span class=up-name>${name}</span>
+						<span class=up-cost>${cost}</span>
+					</li>`
+					}).join('')
+					: 'No upgrades'
+			);
 		}
 	}
 
@@ -377,6 +483,20 @@
 
 	/* ------------------------------ Looping ------------------ */
 
+	function produce(b, delta) {
+		const type = buildingTypes[b.type];
+		if (!type.output && !type.input) return;
+		// then reduce cooldown by delta
+		// TODO: Adjust delta based on who's working at building
+		const workDelta = delta;
+		b.prodCool -= workDelta;
+		if (b.prodCool > 0) return; // Still producing
+		// TODO: Remove input
+		// TODO: Add output
+		// TODO: if output is a meeple, if there is pop room, then make a new person
+		resetProductionCooldown(b, b.prodCool);
+	}
+
 	function simulate(delta) {
 		// TODO: Do updating of world
 		g.meepleKeys.forEach((key) => {
@@ -386,6 +506,10 @@
 				m.x += dist * randSign();
 				m.y += dist * randSign();
 			}
+		});
+		g.buildingKeys.forEach((k) => {
+			const b = g.buildings[k];
+			produce(b, delta);
 		});
 	}
 
@@ -415,7 +539,8 @@
 
 	function selectBuilding(b) {
 		g.selectedBuildingKey = b.key;
-		return `${b.type} : ${b.resources.join(', ')}`;
+		const type = buildingTypes[b.type];
+		return `${type.name || b.type} : ${b.resources.join(', ')}`;
 	}
 
 	function tapWorld(e) {
@@ -439,28 +564,49 @@
 				binfo = 'road';
 			}
 		}
-		$id('binfo').innerHTML = binfo;
+		setHtml('#binfo', binfo);
 		render();
 	}
 
+	function handleTap(e, tapMap = {}) {
+		const t = e.target;
+		// console.log(t);
+		Object.keys(tapMap).forEach((key) => {
+			const el = t.closest(key);
+			if (el) tapMap[key](e, el);
+		});
+		renderUi();	
+	}
+
 	function tapTopUi(e) {
+		handleTap(e, {
+			'.up-action': (e, el) => {
+				const { building, upgrade } = el.dataset;
+				upgradeBuilding(building, upgrade);
+				g.creating = F;
+			},
+		});
 	}
 
 	function tapBottomUi(e) {
-		const t = e.target;
-		// console.log(t);
-		const taps = {
+		handleTap(e, {
 			'#play': startLoop,
 			'#pause': stopLoop,
 			'#build': () => g.creating = T,
 			'#cancel': () => g.creating = F,
 			'#restart': () => window.location.reload(),
-			'#jobs': () => g.assigning = !(g.assigning),
-		};
-		Object.keys(taps).forEach((key) => {
-			if (t.closest(key)) taps[key]();
+			'#jobs': () => {
+				g.assigning = !(g.assigning);
+				renderJobAssignment();
+			},
 		});
-		renderUi();
+	}
+
+	function setupDom() {
+		setHtml('#jass', `<ul>${JOBS.map((j, i) => (
+		`<li id=jr-${j}><label for="input-${j}">${JOB_NAMES[i]}</label><b></b>
+		<input id="input-${j}" type=range min=0></li>`
+	)).join('')}</ul>`);
 	}
 
 	function setupEvents(w) {
@@ -490,7 +636,8 @@
 				const desiredJobCounts = getAdjustedJobCounts(job, Number(input.value) || 0);
 				console.log('Desiring', desiredJobCounts);
 				assignJobs(desiredJobCounts);
-				renderUi();
+				renderJobAssignment();
+				render();
 			});
 		});
 	}
@@ -513,13 +660,14 @@
 			x: 0,
 			y: 0,
 		};
+		setupDom();
 		setupEvents(g.world);
 		const b = addBuilding({ type: 'connector' });
 		addBuilding({ type: 'connector' }, b.key);
 		addMeeple();
 		addMeeple();
 		addMeeple();
-		render(w);
+		render();
 	}
 
 

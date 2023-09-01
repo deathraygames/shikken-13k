@@ -519,6 +519,7 @@ function produce(b, delta) {
 	}
 	// TODO: Remove input
 	// TODO: Add output
+	// TODO: if output is a meeple, if there is pop room, then make a new person
 	resetProductionCooldown(b, b.prodCool);
 }
 
