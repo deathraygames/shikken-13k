@@ -1,3 +1,5 @@
+import Vector2 from './Vector2.js';
+
 const WORLD_SIZE = 1000;
 const Gr = 'grain',
 	Ri = 'rice',
@@ -8,7 +10,12 @@ const Gr = 'grain',
 const T = true;
 const F = false;
 const N = null;
-const MEEP_SPEED = 100 * (1/1000); // pixels per second * s/ms
+// Speed in pixels per millisecond
+const MEEP_SPEED = 140 * (1/1000); // pixels per second * s/ms
+const IDLE_SPEED = MEEP_SPEED / 2;
+const WORK_SPEED = MEEP_SPEED * 0.75;
+const MAX_PATH_LOOK = 20;
+const MAX_WORKERS = 6;
 
 const $ = (q) => document.querySelector(q);
 const $id = (id) => document.getElementById(id);
@@ -31,6 +38,13 @@ const setHtml = (sel, html) => {
 const rand = (a = 1, b = 0) => b + (a - b) * Math.random();
 const randInt = (a = 1, b = 0) => rand(a, b)|0;
 const randSign = () => (rand(2)|0) * 2 - 1;
+const distanceSquared = ({x,y}, {x1,y1}) => (x - x1)**2 + (y - y1)**2;
+const distance = (v1, v2) => distanceSquared(v1, v2)**.5;
+const vec2 = (x=0, y)=> x.x == undefined ? new Vector2(x, y == undefined? x : y) : new Vector2(x.x, x.y);
+// Other mini helpers
+const randPick = (arr) => arr[randInt(arr.length)];
+const atPoint = (v1, v2, within = 2) => (vec2(v1).distance(v2) <= within);
+const setVec = (o, v) => { o.x = v.x; o.y = v.y; return o; }
 
 const resourceTypes = {
 	grain: { shape: 'polygon', sides: 5, },
@@ -53,85 +67,116 @@ const JOBS = [
 		'Samurai (Defenders)',
 		'Monk/Pilgrim (Spiritualist)',
 	];
-
-const buildingTypes = {
-	// r = radius, cap = resource capacity, mm = max meeples
-	outpost: {
+const baseType = {
+	name: '',
+	r: 10, // radius and computes max resources
+	cap: 0, // capacity (resources) -- TODO
+	cost: [], // cost to create/upgrade
+	upgrades: [], // upgrade paths from here
+	defMax: 0, // contribution to defense max meeples
+	popMax: 0, // contribution to max meeples
+	input: [], // input for production
+	output: [], // output of production
+	rate: 0, // rate of production: # of outputs per minute
+};
+const buildingTypesArr = [
+	{
+		key: 'outpost',
 		name: 'Outpost',
 		r: 20, cap: 19, cost: [W, W, S, S],
 		defMax: 2, popMax: 10,
 	},
-	connector: {
+	{
+		key: 'connector',
 		r: 10, cap: 4, cost: [S],
 		upgrades: ['stoneMine', 'grainFarm', 'tower', 'shrine', 'farmHouse', 'woodCutter', 'stockpile'],
 	},
-	stockpile: {
+	{
+		key: 'stockpile',
 		name: 'Stockpile',
 		r: 40, cap: 20, cost: [S, W],
 	},
-	woodCutter: {
+	{
+		key: 'woodCutter',
 		name: 'Woodcutter',
 		r: 20, cap: 6, cost: [W],
 		input: [], output: [W], rate: 2,
 	},
-	stoneMine: {
+	{
+		key: 'stoneMine',
 		name: 'Stone Mine',
 		r: 20, cap: 6, cost: [W],
 		input: [], output: [W], rate: 2,
 		upgrades: ['oreMine'],
 	},
-	oreMine: {
+	{
+		key: 'oreMine',
 		name: 'Ore Mine',
 		r: 30, cap: 6, cost: [W],
 		input: [], output: [Or], rate: 2,
 	},
-	tower: {
+	{
+		key: 'tower',
 		name: 'Watchtower',
 		r: 14, cap: 2, cost: [S, W, W],
 		defMax: 5,
 		upgrades: ['fortress'],
 	},
-	fortress: {
+	{
+		key: 'fortress',
 		name: 'Fortress',
 		r: 24, cap: 4, cost: [S, S, S, S, W],
 		defMax: 8,
 	},
-	grainFarm: {
+	{
+		key: 'grainFarm',
 		name: 'Grain farm',
 		r: 20, cap: 10, cost: [W, W],
 		input: [], output: [Gr], rate: 2,
 		upgrades: ['riceFarm'],
 	},
-	riceFarm: {
+	{
+		key: 'riceFarm',
 		name: 'Rice farm',
 		r: 24, cap: 6, cost: [W],
 		input: [], output: [Ri], rate: 2,
 	},
-	shrine: {
+	{
+		key: 'shrine',
 		name: 'Shrine',
 		r: 16, cap: 6, cost: [W],
 		input: [Ri], output: [Ka], rate: 2,
 		upgrades: ['temple'],
 	},
-	temple: {
+	{
+		key: 'temple',
 		name: 'Temple',
 		r: 32, cap: 6, cost: [W],
 		input: [Ri], output: [Ka, Ka], rate: 2,
 	},
-	farmHouse: { // noka
+	{ // noka
+		key: 'farmHouse',
 		name: 'Noka (farmhouse)',
 		r: 20, cap: 6, cost: [W],
-		input: [Gr], output: ['meeple'], rate: 1,
+		input: [Gr], output: ['meeple'], rate: 10,
 		popMax: 4,
 		upgrades: ['urbanHouse'],
 	},
-	urbanHouse: { // machiya
+	{ // machiya
+		key: 'urbanHouse',
 		name: 'Machiya (urban house)',
 		r: 30, cap: 6, cost: [W],
 		input: [Ri], output: ['meeple'], rate: 1,
 		popMax: 8,
 	},
-};
+];
+const buildingTypes = buildingTypesArr.reduce((obj, bt) => {
+	obj[bt.key] = {
+		...baseType,
+		...bt,
+	};
+	return obj;
+}, {});
 
 function getRandomWorldLocation() {
 	return { x: randInt(WORLD_SIZE), y: randInt(WORLD_SIZE) };
@@ -147,21 +192,24 @@ function getRandomKey(prefix = 'U') {
 
 /* ------------------------------ Looping ------------------ */
 
-// function loopBuildings(fn) {
-// 	g.buildingKeys.forEach((key, i) => {
-// 		const b = g.buildings[key];
-// 		fn(b, key, i);
-// 	});
-// }
+function loopThing(keys, obj, fn) {
+	return keys.map((key, i) => {
+		const o = obj[key];
+		return fn(o, key, i);
+	});
+}
+
+const loopBuildings = (fn) => loopThing(g.buildingKeys, g.buildings, fn);
+const loopRoads = (fn) => loopThing(g.roadKeys, g.roads, fn);
 
 /* ------------------------------ Adding ------------------ */
 
 function getPopMax() {
-	return 1 + g.buildingKeys.reduce((sum, k) => sum + (g.buildings[k].popMax || 0), 0);
+	return 1 + g.buildingKeys.reduce((sum, k) => sum + (buildingTypes[g.buildings[k].type].popMax || 0), 0);
 }
 
 function getDefenderMax() {
-	return g.buildingKeys.reduce((sum, k) => sum + (g.buildings[k].defMax || 0), 0);
+	return g.buildingKeys.reduce((sum, k) => sum + (buildingTypes[g.buildings[k].type].defMax || 0), 0);
 }
 
 function addRoad(bKey1, bKey2, rParam = {}) {
@@ -187,10 +235,11 @@ function resetProductionCooldown(b, extra = 0) {
 		return;
 	}
 	const extraNum = (Number.isNaN(extra)) ? 0 : extra;
-	b.prodCool = (
+	b.prodHeat = (
 		60000 // 60000 ms per 1 minute
 		* (1 / rate) // rate = # of things created in 1 minute
-	) + extraNum; 
+	) + extraNum;
+	b.prodCool = b.prodHeat;
 }
 
 function addBuilding(bParam = {}, fromBuildingKey = N) {
@@ -200,6 +249,7 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 		// x: 0,
 		// y: 0,
 		prodCool: 0,
+		prodHeat: 1,
 		on: true,
 		resources: [W, S, W, Gr],
 		refresh: false, // remove rendered element and recreate
@@ -221,7 +271,7 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 function addMeeple(mParam = {}) {
 	if (g.meepleKeys.length >= getPopMax()) {
 		console.warn('Could not add another meeple');
-		return;
+		return false;
 	}
 	const m = {
 		key: getRandomKey('M'),
@@ -231,6 +281,8 @@ function addMeeple(mParam = {}) {
 		weapon: N,
 		buildingKey: N, // goal
 		path: [],
+		// x: 0,
+		// y: 0,
 		...getRandomWorldLocation(),
 		...mParam,
 	};
@@ -304,6 +356,7 @@ function assignJobs(desiredJobCounts = {}) {
 		}
 		// Give the meeple a new job
 		m.job = JOBS.find(stillNeedJob) || 'idle';
+		m.path = []; // (m.path.length) ? [m.path[0]] : [];
 		incrementJob(m.job);
 	});
 	JOBS.forEach((job) => {
@@ -487,6 +540,8 @@ function renderUi() {
 				}).join('')
 				: 'No upgrades'
 		);
+		const percent = Math.floor((1 - (b.prodCool / b.prodHeat)) * 100);
+		setHtml('#b-progress', (isBuildingProducing(b)) ? `${percent}%` : '');
 	}
 }
 
@@ -499,44 +554,249 @@ function render() {
 	renderUi();
 }
 
+/* ------------------------------ Querying World ------------------ */
+
+function getNearestBuilding(spot) {
+	let closest = Infinity;
+	let closestB = null;
+	loopBuildings((b) => {
+		const dist = vec2(b).distance(spot);
+		if (dist >= closest) return;
+		closest = dist;
+		closestB = b;
+	});
+	return closestB;
+}
+
+function getBuildingOn(spot) {
+	const b = getNearestBuilding(spot);
+	if (!b) return null;
+	const bType = buildingTypes[b.type];
+	const dist = vec2(b).distance(spot);
+	return (dist > bType.r) ? null : b;
+}
+
+function getRoadsConnected(b) {
+	return g.roadKeys.filter((r) => (r.from === b.key || r.to === b.key));
+}
+
+function getBuildingsConnected(bKey) {
+	return g.roadKeys.reduce((arr, rKey) => {
+		const r = g.roads[rKey];
+		if (r.from === bKey) arr.push(r.to);
+		else if (r.to === bKey) arr.push(r.from);
+		return arr;
+	}, []);
+}
+
+function getPathBetween(pathParam = [], destKey) {
+	const fullPath = (typeof pathParam === 'string') ? [pathParam] : [...pathParam];
+	// console.log(fullPath);
+	if (fullPath.length >= MAX_PATH_LOOK) return fullPath;
+	if (fullPath.includes(destKey)) return fullPath;
+	const last = fullPath[fullPath.length - 1];
+	const bKeys = getBuildingsConnected(last);
+	// Are we connected to the destination?
+	if (bKeys.includes(destKey)) return fullPath.concat(destKey);
+	// We haven't reached the end (destKey) yet, so keep looking
+	let bestPathSize = Infinity;
+	let bestPath = null;
+	const childrenPaths = bKeys.map((bKey) => {
+		let childPath = [...fullPath];
+		// If the path already has this key, then stop
+		if (fullPath.includes(bKey)) return childPath;
+		// Otherwise let's look further
+		childPath.push(bKey);
+		// TODO LATER: Pass best path size so that we don't look further down another child
+		// if we don't have to
+		childPath = getPathBetween(childPath, destKey);
+		if (childPath.includes(destKey) && childPath.length <= bestPathSize) {
+			bestPath = childPath;
+			bestPathSize = childPath.length;
+		}
+		return childPath;
+	});
+	// If no best then just pick something random
+	if (bestPath === null) return childrenPaths[0];
+	return bestPath;
+}
+
+function getPathTo(b, from) {
+	const nearestB = getNearestBuilding(from);
+	if (!nearestB) return [];
+	const buildingPath = getPathBetween([nearestB.key], b.key);
+	const path = buildingPath.map((key) => {
+		const b = g.buildings[key];
+		return { key, x: b.x, y: b.y };
+	});
+	return path;
+}
+
+function isBuildingProducing(b) {
+	const bt = buildingTypes[b.type];
+	return (
+		((bt.input && bt.input.length) || (bt.output && bt.output.length))
+		&& b.on
+		// TODO LATER: Also check if it is clogged up
+	);
+}
+
+function isMeepleWorkingAt(m, bParam) {
+	const b = getBuildingOn(m);
+	if (!b) return false;
+	if (bParam && bParam.key !== b.key) return false;
+	// TODO: check if the building needs this worker
+	const bProd = isBuildingProducing(b);
+	return (m.job === 'prod' && bProd);
+}
+
+function countWorkers(b) {
+	return g.meepleKeys.reduce((sum, key) => (
+		sum + (isMeepleWorkingAt(g.meeples[key], b) ? 1 : 0)
+	), 0);
+}
+
+/** Does building have a list of resources? */
+function doesBuildingHave(b, arr = []) {
+	const leftOver = b.resources.reduce((left, res) => {
+		const i = left.indexOf(res);
+		if (i >= 0) left.splice(i, 1);
+		return left;
+	}, [...arr]);
+	return (leftOver.length === 0);
+}
+
 /* ------------------------------ Looping ------------------ */
+
+/** Removes a list of resources from a building - all or nothing */
+function consumeResources(b, arr = []) {
+	if (!arr.length) return true;
+	if (!doesBuildingHave(b, arr)) return false;
+	const left = [...arr]; // What's left to remove
+	// Loop over resources backwards because we'll be removing items, altering indices
+	for (let w = b.resources.length; w--; w >= 0) {
+		const res = b.resources[w];
+		const i = left.indexOf(res); // If this one that's left to remove
+		if (i >= 0) {
+			left.splice(i, 1);
+			b.resources.splice(w, 1);
+		}
+	}
+	return (left.length === 0);
+}
+
+/** Make resources and add to a building, ignoring any  */
+function createResources(b, arr = []) {
+	// Special case: if output is a meeple, try to make a new person
+	if (arr.includes('meeple')) {
+		// TODO LATER: Allow multiple meeple to be created?
+		// TODO LATER: Allow meeple and other resources to be created at once?
+		const { x, y } = b;
+		const m = addMeeple({ x, y });
+		return Boolean(m);
+	}
+	// Is too full?
+	if (b.resources.length >= buildingTypes[b.type].cap) return false;
+	b.resources = b.resources.concat([...arr]);
+	return true;
+}
 
 function produce(b, delta) {
 	const type = buildingTypes[b.type];
 	if (!type.output && !type.input) return;
-	const haveInputs = true; // TODO: If we have input in inventory
-	if (!haveInputs) return;
-	// then reduce cooldown by delta
-	// TODO: Adjust delta based on who's working at building
-	const workDelta = delta;
+	const workers = Math.min(countWorkers(b), MAX_WORKERS);
+	// Reduce cooldown by delta
+	// Adjust delta based on who's working at building
+	const mult = (workers) ? workers / (workers ** 0.55) : 0;
+	// console.log(workers, mult);
+	const workDelta = delta * mult;
 	b.prodCool -= workDelta;
 	if (b.prodCool > 0) return; // Still producing
 	// Production is done
-	const haveSpace = true; // TODO: make sure we have space for output
-	if (!haveSpace) { // We're jammed up
-		b.prodCool = 0;
+	b.prodCool = 0;
+	// Do we have input in inventory?
+	// if (!doesBuildingHave(b, type.input)) return;
+	const didConsumeAll = consumeResources(b, type.input);
+	if (!didConsumeAll) return;
+	const didCreate = createResources(b, type.output);
+	if (!didCreate) {
+		// If the creation failed then re-add the resources that were taken
+		createResources(b, type.input);
 		return;
 	}
-	// TODO: Remove input
-	// TODO: Add output
-	// TODO: if output is a meeple, if there is pop room, then make a new person
 	resetProductionCooldown(b, b.prodCool);
 }
 
-function simulate(delta) {
-	// TODO: Do updating of world
+function moveTo(m, dest, deltaT, speed) {
+	const maxDist = deltaT * speed;
+	const mVec = vec2(m);
+	const moveVec = vec2(dest).subtract(mVec).clampLength(maxDist);
+	setVec(m, mVec.add(moveVec));
+}
+
+function moveWorking(m, delta) {
+	// TODO: fix to only move within the circle of the production building
+	const dist = delta * WORK_SPEED * 0.25;
+	m.x += dist * randSign();
+	m.y += dist * randSign();
+}
+
+function simIdle(m, delta) {
+	if (m.path.length) {
+		// console.log(m.x, m.y, m.path, atPoint(m, m.path[0]));
+		if (atPoint(m, m.path[0])) m.path.shift();
+	}
+	if (!m.path.length) {
+		// TODO LATER: Do a momentary rest? If rested then continue
+		// Choose a new random destination and path
+		const bKey = randPick(g.buildingKeys);
+		console.log('Pick random building', bKey);
+		if (bKey === undefined) return;
+		m.path = getPathTo(g.buildings[bKey], m);
+		return;
+	}
+	// Move towards first spot of the path
+	moveTo(m, m.path[0], delta, IDLE_SPEED);
+}
+
+function simProd(m, delta) {
+	if (m.path.length) {
+		// console.log(m.x, m.y, m.path, atPoint(m, m.path[0]));
+		if (atPoint(m, m.path[0])) m.path.shift();
+	}
+	if (!m.path.length) {
+		if (isMeepleWorkingAt(m)) {
+			moveWorking(m, delta);
+			return;
+		}
+		const prodBKeys = g.buildingKeys.filter((key) => (
+			isBuildingProducing(g.buildings[key])
+		));
+		const bKey = randPick(prodBKeys);
+		console.log('Pick random production building', bKey);
+		if (bKey === undefined) return;
+		m.path = getPathTo(g.buildings[bKey], m);
+		return;
+	}
+	// Move towards first spot of the path
+	moveTo(m, m.path[0], delta, IDLE_SPEED);
+}
+
+function simulate(delta) { // Do updating of world
 	g.meepleKeys.forEach((key) => {
 		const m = g.meeples[key];
-		if (m.job === 'idle') {
-			const dist = delta * MEEP_SPEED * 0.5;
-			m.x += dist * randSign();
-			m.y += dist * randSign();
-		}
+		const simJob = {
+			idle: simIdle,
+			prod: simProd,
+			// TODO: Other jobs
+		};
+		if (simJob[m.job]) simJob[m.job](m, delta);
 	});
 	g.buildingKeys.forEach((k) => {
 		const b = g.buildings[k];
 		produce(b, delta);
 	});
+	// TODO: Enemies and combat
 }
 
 function loop() {
@@ -566,7 +826,13 @@ function stopLoop() {
 function selectBuilding(b) {
 	g.selectedBuildingKey = b.key;
 	const type = buildingTypes[b.type];
-	return `${type.name || b.type} : ${b.resources.join(', ')}`;
+	return `<div class=b-name>${type.name || b.type}</div>
+		<div>📦 Resources: ${b.resources.join(', ')}</div>
+		<div>⚙️ Production: ${(type.input.length) ? type.input.join(', ') : '(No input)'}
+			➡️ ${(type.output.length) ? type.output.join(', ') : '(No output)'}
+			<span id=b-progress>##%</span>
+		</div>
+		🔨 Upgrades: ${type.upgrades.length || 'None'}`;
 }
 
 function tapWorld(e) {
@@ -717,5 +983,12 @@ const g = window.g = {
 	start,
 	getJobCounts,
 	assignJobs,
+	// test
+	getPathBetween,
+	doesBuildingHave,
+	consumeResources,
+	isMeepleWorkingAt,
+	countWorkers,
+	getPopMax,
 };
 document.addEventListener('DOMContentLoaded', g.start);

@@ -78,11 +78,17 @@ button:hover {
 button, #blist {
 	transition: all ease-in-out 0.2s;
 }
+#binfo {
+	background: rgba(255, 255, 255, 0.5);
+}
 #blist {
 	display: none;
 	padding: 1em auto;
 	max-width: 30em;
-	background: white;
+	background: rgba(255, 255, 255, 0.9);
+}
+.b-name {
+	font-size: 2em;
 }
 .bselected #blist {
 	display: block;
