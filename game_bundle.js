@@ -144,7 +144,8 @@
         { return `(${(this.x<0?'':' ') + this.x.toFixed(digits)},${(this.y<0?'':' ') + this.y.toFixed(digits)} )`; }
     }
 
-    const WORLD_SIZE = 1000;
+    // const WORLD_SIZE = 2000;
+    // Resources
     const Gr = 'grain',
     	Ri = 'rice',
     	Ka = 'karma',
@@ -159,6 +160,9 @@
     const IDLE_SPEED = MEEP_SPEED / 2;
     const WORK_SPEED = MEEP_SPEED * 0.75;
     const MAX_PATH_LOOK = 20;
+    const MAX_WORKERS = 6;
+    const WIND_KARMA = 3000;
+    const KARMA_PER_RESOURCE = 1;
 
     const $ = (q) => document.querySelector(q);
     const $id = (id) => document.getElementById(id);
@@ -171,35 +175,34 @@
     };
     const setAttributes = (el, o) => Object.keys(o).forEach((k) => el.setAttribute(k, o[k]));
     const setHtml = (sel, html) => {
-    	const el = $(sel);
+    	const el = (typeof sel === 'object') ? sel : $(sel);
+    	// if (sel === '#binfo') console.log(el.innerHTML, el.innerHTML.length, '\n...compare to...\n', html, html.length);
     	if (el.innerHTML === html) return false;
     	el.innerHTML = html;
     	return true;
     };
+    const translateStyle = (v) => `translate(${v.x}px, ${v.y}px)`;
 
     // From LittleJs
     const rand = (a = 1, b = 0) => b + (a - b) * Math.random();
     const randInt = (a = 1, b = 0) => rand(a, b)|0;
     const randSign = () => (rand(2)|0) * 2 - 1;
+    // const distanceSquared = ({x,y}, {x1,y1}) => (x - x1)**2 + (y - y1)**2;
+    // const distance = (v1, v2) => distanceSquared(v1, v2)**.5;
     const vec2 = (x=0, y)=> x.x == undefined ? new Vector2(x, y == undefined? x : y) : new Vector2(x.x, x.y);
     // Other mini helpers
     const randPick = (arr) => arr[randInt(arr.length)];
     const atPoint = (v1, v2, within = 2) => (vec2(v1).distance(v2) <= within);
     const setVec = (o, v) => { o.x = v.x; o.y = v.y; return o; };
     const JOBS = [
-    	'idle',
-    	'prod',
-    	'carr',
-    	'defe',
-    	'spir',
-    ],
-    	JOB_NAMES = [
-    		'Wanderer (Idle)',
-    		'Farmer/Artisan (Production)',
-    		'Peasant (Carrying)',
-    		'Samurai (Defenders)',
-    		'Monk/Pilgrim (Spiritualist)',
-    	];
+    	{ key: 'idle', name: 'Wanderer', altName: 'Idle', classification: '💤' },
+    	{ key: 'prod', name: 'Farmer/Artisan', altName: 'Production', classification: '🪚' },
+    	{ key: 'carr', name: 'Carrier/Merchant', altName: 'Transportation', classification: '🧺' },
+    	{ key: 'defe', name: 'Samurai/Soldier', altName: 'Defenders', classification: '🛡️' },
+    	{ key: 'spir', name: 'Monk/Pilgrim', altName: 'Spiritualist', classification: '🪷' },
+    ];
+    const JOBS_OBJ = JOBS.reduce((o, jobObj) => { o[jobObj.key] = jobObj; return o; }, {});
+    const JOB_KEYS = Object.keys(JOBS_OBJ);
     const baseType = {
     	name: '',
     	r: 10, // radius and computes max resources
@@ -211,6 +214,8 @@
     	input: [], // input for production
     	output: [], // output of production
     	rate: 0, // rate of production: # of outputs per minute
+    	autoWork: F, // does this building work without workers?
+    	classification: '', // production, defense, spirit
     };
     const buildingTypesArr = [
     	{
@@ -218,22 +223,27 @@
     		name: 'Outpost',
     		r: 20, cap: 19, cost: [W, W, S, S],
     		defMax: 2, popMax: 10,
+    		classification: '🚩'
     	},
     	{
     		key: 'connector',
-    		r: 10, cap: 4, cost: [S],
+    		name: 'Crossroad',
+    		r: 10, cap: 4, cost: [],
     		upgrades: ['stoneMine', 'grainFarm', 'tower', 'shrine', 'farmHouse', 'woodCutter', 'stockpile'],
+    		classification: '🪧'
     	},
     	{
     		key: 'stockpile',
     		name: 'Stockpile',
     		r: 40, cap: 20, cost: [S, W],
+    		classification: '📦',
     	},
     	{
     		key: 'woodCutter',
     		name: 'Woodcutter',
     		r: 20, cap: 6, cost: [W],
     		input: [], output: [W], rate: 2,
+    		classification: '🪚',
     	},
     	{
     		key: 'stoneMine',
@@ -241,12 +251,14 @@
     		r: 20, cap: 6, cost: [W],
     		input: [], output: [W], rate: 2,
     		upgrades: ['oreMine'],
+    		classification: '🪚',
     	},
     	{
     		key: 'oreMine',
     		name: 'Ore Mine',
     		r: 30, cap: 6, cost: [W],
     		input: [], output: [Or], rate: 2,
+    		classification: '🪚',
     	},
     	{
     		key: 'tower',
@@ -254,12 +266,14 @@
     		r: 14, cap: 2, cost: [S, W, W],
     		defMax: 5,
     		upgrades: ['fortress'],
+    		classification: '🛡️',
     	},
     	{
     		key: 'fortress',
     		name: 'Fortress',
     		r: 24, cap: 4, cost: [S, S, S, S, W],
     		defMax: 8,
+    		classification: '🛡️',
     	},
     	{
     		key: 'grainFarm',
@@ -267,12 +281,14 @@
     		r: 20, cap: 10, cost: [W, W],
     		input: [], output: [Gr], rate: 2,
     		upgrades: ['riceFarm'],
+    		classification: '🪚',
     	},
     	{
     		key: 'riceFarm',
     		name: 'Rice farm',
     		r: 24, cap: 6, cost: [W],
     		input: [], output: [Ri], rate: 2,
+    		classification: '🪚',
     	},
     	{
     		key: 'shrine',
@@ -280,20 +296,24 @@
     		r: 16, cap: 6, cost: [W],
     		input: [Ri], output: [Ka], rate: 2,
     		upgrades: ['temple'],
+    		classification: '🪷',
     	},
     	{
     		key: 'temple',
     		name: 'Temple',
     		r: 32, cap: 6, cost: [W],
     		input: [Ri], output: [Ka, Ka], rate: 2,
+    		classification: '🪷',
     	},
     	{ // noka
     		key: 'farmHouse',
     		name: 'Noka (farmhouse)',
     		r: 20, cap: 6, cost: [W],
-    		input: [Gr], output: ['meeple'], rate: 10,
+    		input: [Gr], output: ['meeple'], rate: 10, // TODO: decrease rate
     		popMax: 4,
     		upgrades: ['urbanHouse'],
+    		autoWork: T,
+    		classification: '🛖',
     	},
     	{ // machiya
     		key: 'urbanHouse',
@@ -301,6 +321,8 @@
     		r: 30, cap: 6, cost: [W],
     		input: [Ri], output: ['meeple'], rate: 1,
     		popMax: 8,
+    		autoWork: true,
+    		classification: '🛖',
     	},
     ];
     const buildingTypes = buildingTypesArr.reduce((obj, bt) => {
@@ -312,7 +334,7 @@
     }, {});
 
     function getRandomWorldLocation() {
-    	return { x: randInt(WORLD_SIZE), y: randInt(WORLD_SIZE) };
+    	return { x: randInt(g.world.size), y: randInt(g.world.size) };
     }
 
     function getRandomKey(prefix = 'U') {
@@ -333,6 +355,8 @@
     }
 
     const loopBuildings = (fn) => loopThing(g.buildingKeys, g.buildings, fn);
+    const loopRoads = (fn) => loopThing(g.roadKeys, g.roads, fn);
+    const loopMeeples = (fn) => loopThing(g.meepleKeys, g.meeples, fn);
 
     /* ------------------------------ Adding ------------------ */
 
@@ -381,7 +405,7 @@
     		// x: 0,
     		// y: 0,
     		prodCool: 0,
-    		prodHeat: 1,
+    		prodHeat: 0,
     		on: true,
     		resources: [W, S, W, Gr],
     		refresh: false, // remove rendered element and recreate
@@ -413,6 +437,7 @@
     		weapon: N,
     		buildingKey: N, // goal
     		path: [],
+    		inv: [],
     		// x: 0,
     		// y: 0,
     		...getRandomWorldLocation(),
@@ -428,7 +453,7 @@
     /* ------------------------------ Jobs ------------------ */
 
     function getBlankJobCounts() {
-    	return JOBS.reduce((o, j) => ({ ...o, [j]: 0 }), {});
+    	return JOB_KEYS.reduce((o, j) => ({ ...o, [j]: 0 }), {});
     }
 
     function getJobCounts() {
@@ -459,7 +484,7 @@
     		desiredJobCounts.idle -= takeFromIdle;
     	}
     	if (left <= 0) return desiredJobCounts;
-    	const leftJobs = JOBS.reduce((arr, j) => {
+    	const leftJobs = JOB_KEYS.reduce((arr, j) => {
     		if (j !== job && j !== 'idle') arr.push(j);
     		return arr;
     	}, []);
@@ -479,17 +504,19 @@
     	const currJobCounts = getBlankJobCounts();
     	const stillNeedJob = (j) => ((currJobCounts[j] || 0) < desiredJobCounts[j]);
     	const incrementJob = (j) => currJobCounts[j] = (currJobCounts[j] || 0) + 1;
-    	g.meepleKeys.forEach((key) => {
-    		const m = g.meeples[key];
+    	loopMeeples((m) => {
     		// Still need this job, so keep job and increment count
     		if (stillNeedJob(m.job)) {
     			incrementJob(m.job);
     			return;
     		}
     		// Give the meeple a new job
-    		m.job = JOBS.find(stillNeedJob) || 'idle';
+    		m.job = JOB_KEYS.find(stillNeedJob) || 'idle';
     		m.path = []; // (m.path.length) ? [m.path[0]] : [];
     		incrementJob(m.job);
+    	});
+    	JOB_KEYS.forEach((job) => {
+    		if (job === 'idle') return;
     	});
     	console.log('Meeples assigned jobs:', g.meeples, 'desired:', desiredJobCounts, 'final:', currJobCounts);
     }
@@ -513,22 +540,60 @@
 
     /* ------------------------------ Rendering ------------------ */
 
+    function getWorldZoomSize() {
+    	return g.world.size * g.zoom;
+    }
+
     function renderCanvas(ctx) {
     	// ctx.fillStyle = 'green';
     	// ctx.fillRect(10, 10, 150, 100);
     }
 
+    function setCirclePercent(circleSvgEl, r, percent = 0) {
+    	const circumference = r * (2 * Math.PI);
+    	const circPercent = percent * circumference;
+    	const dashArray = [circPercent, circumference - circPercent];
+    	setAttributes(circleSvgEl, {
+    		r,
+    		// stroke: 'tomato',
+    		'stroke-width': '10',
+    		'stroke-dasharray': dashArray.join(' '),
+    		'stroke-dashoffset': 40, // ?? just picked something that looks okay
+    		// fill: 'none',
+    	});
+    }
+
+    function setBuildingProgressSvg(b) {
+    	const type = buildingTypes[b.type];
+    	const r = type.r + 4;
+    	const percent = getProdPercent(b);
+    	const bEl = $id(b.key);
+    	setCirclePercent(bEl.querySelector('.b-prod-circle'), r, percent);
+    }
+
     function addBuildingSvg(b, layer) {
     	const type = buildingTypes[b.type];
     	const group = createAppendSvg('g', layer);
-    	group.id = b.key;
+    	// group.id = b.key;
+    	setAttributes(group, {
+    		id: b.key,
+    		style: `transform: ${translateStyle(b)}`,
+    	});
+    	const prodCircle = createAppendSvg('circle', group);
+    	setAttributes(prodCircle, {
+    		// r: type.r + 4,
+    		class: `b-prod-circle b-prod-${b.type}`,
+    	});
+    	setBuildingProgressSvg(b);
     	const circle = createAppendSvg('circle', group);
     	setAttributes(circle, {
-    		cx: b.x,
-    		cy: b.y,
+    		// cx: b.x,
+    		// cy: b.y,
     		r: type.r,
     		class: `building b-${b.type}`,
     	});
+    	const resourceGroup = createAppendSvg('g', group);
+    	setAttributes(resourceGroup, { class: 'b-res-g res-g' });
     	return group;
     }
 
@@ -548,63 +613,89 @@
     }
 
     function addMeepleSvg(m, layer) {
-    	const circle = createAppendSvg('circle', layer);
-    	circle.id = m.key;
+    	const group = createAppendSvg('g', layer);
+    	setAttributes(group, {
+    		id: m.key,
+    		style: `transform: ${translateStyle(m)}`,
+    		class: 'meeple-g',
+    	});
+    	const circle = createAppendSvg('circle', group);
+    	// circle.id = m.key;
     	setAttributes(circle, {
-    		cx: 0, // m.x,
-    		cy: 0, // m.y,
+    		// cx: 0, // m.x,
+    		// cy: 0, // m.y,
     		r: 7, // MEEPLE_SIZE
     		class: `meeple mj-${m.job}`,
     	});
-    	return circle;
+    	const resourceGroup = createAppendSvg('g', group);
+    	setAttributes(resourceGroup, { class: 'm-res-g res-g' });
+    	return group;
     }
 
-    function renderBuildingResources(b, bEl) {
-    	b.resources.forEach((res) => {
-    		// bEl.
-    		// TODO...
+    function addResourceSvg(res, layer) {
+    	const shape = createAppendSvg('circle', layer);
+    	setAttributes(shape, {
+    		r: 4,
+    		class: `res res-${res}`,
+    		'data-res': res,
     	});
+    	return shape;
     }
 
     function renderBuildings() {
     	const { layers } = g.world;
-    	g.buildingKeys.forEach((key) => {
-    		const b = g.buildings[key];
-    		let bEl = $id(key);
+    	loopBuildings((b) => {
+    		let bEl = $id(b.key);
     		if (bEl && b.refresh) {
     			bEl.remove();
     			bEl = N;
     			b.refresh = F;
     		}
     		if (!bEl) bEl = addBuildingSvg(b, layers.building);
-    		renderBuildingResources(b);
-    		bEl.classList.toggle('selectedb', (key === g.selectedBuildingKey));
+    		bEl.classList.toggle('selectedb', (b.key === g.selectedBuildingKey));
+    		setBuildingProgressSvg(b);
+    		renderResources(b.resources, bEl.querySelector('.res-g'));
+    	});
+    }
+
+    function renderResources(inv, gEl) {
+    	const children = [...gEl.children];
+    	const expected = [...inv];
+    	children.forEach((el) => {
+    		const { res } = el.dataset;
+    		if (!res) el.remove();
+    		// TODO: remove from expected if it's already there
+    		// TODO: remove element if it's not needed
+    	});
+    	expected.forEach((res) => {
+    		const shape = addResourceSvg(res, gEl);
+
+    		shape.style.cx = randInt(6) * randSign();
+    		shape.style.cy = randInt(6) * randSign();
     	});
     }
 
     function renderSvg(layers) {
     	renderBuildings();
-    	g.roadKeys.forEach((key) => {
-    		const r = g.roads[key];
-    		let rEl = $id(key);
+    	loopRoads((r) => {
+    		let rEl = $id(r.key);
     		if (!rEl) rEl = addRoadSvg(r, layers.road);
     	});
-    	g.meepleKeys.forEach((key) => {
-    		const m = g.meeples[key];
-    		let mEl = $id(key);
+    	loopMeeples((m) => {
+    		let mEl = $id(m.key);
     		if (!mEl) mEl = addMeepleSvg(m, layers.meeple);
-    		// mEl.className = `meeple mj-${m.job}`;
-    		mEl.setAttribute('class', `meeple mj-${m.job}`);
-    		mEl.style.cx = m.x;
-    		mEl.style.cy = m.y;
+    		const circle = mEl.querySelector('.meeple');
+    		circle.setAttribute('class', `meeple mj-${m.job}`);
+    		mEl.style.transform = `translate(${m.x}px, ${m.y}px)`;
+    		renderResources(m.inv, mEl.querySelector('.res-g'));
     	});
     }
 
     function loopJobs(fn) {
-    	JOBS.forEach((job) => {
+    	JOB_KEYS.forEach((job) => {
     		const el = $(`#jr-${job}`);
     		const input = el.querySelector('input[type="range"]');
-    		const numEl = el.querySelector('b');
+    		const numEl = el.querySelector('.jr-num');
     		fn(job, input, el, numEl);
     	});
     }
@@ -629,6 +720,39 @@
     	});
     }
 
+    function getBuildingInfoHtml(b) {
+    	if (!b) return '';
+    	const type = buildingTypes[b.type];
+    	const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${type.upgrades.length})</b></button>`;
+    	const toggleButtons = `<button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
+		<button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>`;
+    	const prod = `<div>🪚 Production:
+			${(type.input.length) ? type.input.join(', ') : '(No input)'}
+			➡️ ${(type.output.length) ? type.output.join(', ') : '(No output)'}
+			<span>(${type.rate}/min)</span>
+			<span id="b-progress">%</span>
+		</div>`;
+    	return `<div>
+			<div class="b-name">${type.classification} ${type.name || b.type}</div>
+			<div>📦 Resources: ${b.resources.join(', ')}</div>
+			${isBuildingProducer(b) ? prod : ''}
+		</div>
+		<div>
+			${toggleButtons}
+			${type.upgrades.length ? upgradeButton : ''}
+		</div>`;
+    }
+
+    function renderBuildingInfo(b) {
+    	if (!b) return;
+    	const binfo = getBuildingInfoHtml(b);
+    	setHtml('#binfo', binfo);
+    	if (isBuildingProducer(b)) {
+    		const percent = Math.floor(getProdPercent(b) * 100);
+    		setHtml('#b-progress', (isBuildingProducing(b)) ? `${percent}%` : '');
+    	}
+    }
+
     function renderUi() {
     	const classes = $('main').classList;
     	classes.toggle('bselected', g.selectedBuildingKey);
@@ -642,23 +766,24 @@
     	const mins = Math.floor(cd * (1/1000) * (1/60));
     	cd -= (mins * 1000 * 60);
     	const sec = Math.floor(cd * (1/1000));
-    	g.countdownEl.innerText = `${mins}:${sec < 10 ? '0' : ''}${sec}`;
+    	setHtml(g.countdownEl, `⚔️ ${mins}:${sec < 10 ? '0' : ''}${sec}`);
+    	setHtml('#karma', `🪷 Karma: ${g.karma} /${WIND_KARMA}`);
+    	$('#kamikaze').style.display = (g.karma >= WIND_KARMA) ? 'block' : 'none';
     	// List
     	if (g.selectedBuildingKey) {
     		const b = g.buildings[g.selectedBuildingKey];
+    		renderBuildingInfo(b);
     		const { upgrades } = buildingTypes[b.type];
-    		setHtml(
-    			'#blist',
-    			(upgrades)
-    				? upgrades.map((key) => {
-    					const { name = key, cost } = buildingTypes[key];
-    					return `<li class=up-action data-upgrade="${key}" data-building="${g.selectedBuildingKey}">
-						<span class=up-name>${name}</span>
-						<span class=up-cost>${cost}</span>
-					</li>`
-    				}).join('')
-    				: 'No upgrades'
-    		);
+    		let upgradesHtml = (upgrades)
+    			? upgrades.map((key) => {
+    				const { name = key, cost, classification } = buildingTypes[key];
+    				return `<li class="up-action" data-upgrade="${key}" data-building="${g.selectedBuildingKey}">
+					<span class="up-name">${classification} ${name}</span>
+					<span class="up-cost">${cost}</span>
+				</li>`
+    			}).join('')
+    			: 'No upgrades';
+    		setHtml('#blist', (g.upgradesOpen) ? upgradesHtml : '');
     	}
     }
 
@@ -666,12 +791,22 @@
     	const w = g.world;
     	w.el.style.top = `${w.y}px`;
     	w.el.style.left = `${w.x}px`;
+    	w.el.style.width = `${getWorldZoomSize()}px`;
+    	w.el.style.height = w.el.style.width;
     	renderCanvas(w.ctx);
     	renderSvg(w.layers);
     	renderUi();
     }
 
     /* ------------------------------ Querying World ------------------ */
+
+    function filterBuildingKeys(fn) {
+    	return g.buildingKeys.filter((key) => {
+    		const b = g.buildings[key];
+    		const bt = buildingTypes[b.type];
+    		return fn(b, bt);
+    	});
+    }
 
     function getNearestBuilding(spot) {
     	let closest = Infinity;
@@ -683,6 +818,12 @@
     		closestB = b;
     	});
     	return closestB;
+    }
+
+    function isOnBuilding(spot, b) {
+    	const bType = buildingTypes[b.type];
+    	const dist = vec2(b).distance(spot);
+    	return (dist <= bType.r);
     }
 
     function getBuildingOn(spot) {
@@ -745,11 +886,13 @@
     	return path;
     }
 
-    function isBuildingProducing(b) {
+    function isBuildingProducer(b) {
     	const bt = buildingTypes[b.type];
-    	return (
-    		((bt.input && bt.input.length) || (bt.output && bt.output.length))
-    		&& b.on
+    	return ((bt.input && bt.input.length) || (bt.output && bt.output.length));
+    }
+
+    function isBuildingProducing(b) {
+    	return (isBuildingProducer(b) && b.on
     		// TODO LATER: Also check if it is clogged up
     	);
     }
@@ -760,7 +903,14 @@
     	if (bParam && bParam.key !== b.key) return false;
     	// TODO: check if the building needs this worker
     	const bProd = isBuildingProducing(b);
-    	return (m.job === 'prod' && bProd);
+    	const bt = buildingTypes[b.type];
+    	return (
+    		bProd
+    		&& (
+    			(m.job === 'prod' && bt.classification === '🪚')
+    			|| (m.job === 'spir' && bt.classification === '🪷')
+    		)
+    	);
     }
 
     function countWorkers(b) {
@@ -777,6 +927,39 @@
     		return left;
     	}, [...arr]);
     	return (leftOver.length === 0);
+    }
+
+    function getProdPercent(b) {
+    	if (b.prodHeat === 0) return 0;
+    	return (1 - (b.prodCool / b.prodHeat));
+    }
+
+    function getUnneededResources(b) {
+    	const bt = buildingTypes[b.type];
+    	const wanted = [...bt.input];
+    	const unneeded = b.resources.reduce((left, res) => {
+    		const i = wanted.indexOf(res);
+    		if (i > 0) {
+    			wanted.splice(i, 1);
+    		} else {
+    			left.push(res);
+    		}
+    		return left;
+    	}, []);
+    	return unneeded;
+    }
+
+    function hasUnneededResources(b) {
+    	const unneeded = getUnneededResources(b);
+    	return (unneeded && unneeded.length);
+    }
+
+    function needsResource(b, res) {
+    	const bt = buildingTypes[b.type];
+    	const resSum = (sum, r) => sum + ((r === res) ? 1 : 0); // resource summation fn
+    	const need = bt.input.reduce(resSum, 0);
+    	const has = b.resources.reduce(resSum, 0);
+    	return (need > has);
     }
 
     /* ------------------------------ Looping ------------------ */
@@ -808,9 +991,15 @@
     		const m = addMeeple({ x, y });
     		return Boolean(m);
     	}
+    	if (arr.includes('karma')) {
+    		arr.forEach((res) => {
+    			if (res === Ka) g.karma += KARMA_PER_RESOURCE;
+    		});
+    		// TODO LATER: allow karma and other resources to be created together
+    		return;
+    	}
     	// Is too full?
-    	const maxRes = buildingTypes[b.type].r / 2;
-    	if (b.resources.length >= maxRes) return false;
+    	if (b.resources.length >= buildingTypes[b.type].cap) return false;
     	b.resources = b.resources.concat([...arr]);
     	return true;
     }
@@ -818,10 +1007,11 @@
     function produce(b, delta) {
     	const type = buildingTypes[b.type];
     	if (!type.output && !type.input) return;
-    	const workers = Math.min(countWorkers(b), type.cap);
+    	const workers = Math.min(countWorkers(b), MAX_WORKERS);
     	// Reduce cooldown by delta
     	// Adjust delta based on who's working at building
-    	const mult = (workers) ? workers / (workers ** 0.55) : 0;
+    	const defaultMult = (type.autoWork) ? 1 : 0;
+    	const mult = (workers) ? workers / (workers ** 0.55) : defaultMult;
     	// console.log(workers, mult);
     	const workDelta = delta * mult;
     	b.prodCool -= workDelta;
@@ -841,6 +1031,53 @@
     	resetProductionCooldown(b, b.prodCool);
     }
 
+    /** Drop resource from meeple to building */
+    function dropResource(m, b) {
+    	if (!m.inv.length) return F; // Nothing to give
+    	if (!isOnBuilding(m, b)) return F;
+    	const res = m.inv.shift(); // Take from top because we check index 0 when determining where to drop
+    	// TODO LATER: Worry about overflowing the destination building
+    	b.resources.push(res);
+    	return T;
+    }
+
+    /** Meeple takes resource from building */
+    function pickUpResource(m, b, resParam /* optional */) {
+    	if (m.inv.length > 0) return F; // No room
+    	if (!isOnBuilding(m, b)) return F;
+    	const unneeded = getUnneededResources(b);
+    	if (!unneeded.length) return F;
+    	// If resParam and is in arr, then use that, otherwise pick random res from arr
+    	const res = (resParam && unneeded.includes(resParam)) ? resParam : randPick(unneeded);
+    	const consumed = consumeResources(b, [res]);
+    	if (!consumed) return F;
+    	m.inv.push(res);
+    	return T;
+    }
+
+    /** Mutates meeple's path to remove spots from the front the path if the meeple has arrived
+     * - Returns true if arrived somewhere
+    */
+    function checkArrivalTrimPath(m) {
+    	if (m.path.length) {
+    		// console.log(m.x, m.y, m.path, atPoint(m, m.path[0]));
+    		if (atPoint(m, m.path[0])) {
+    			m.path.shift();
+    			return T;
+    		}
+    	}
+    	return F;
+    }
+
+    function setPathTo(m, bKeysParam) {
+    	let bKeys = (typeof bKeysParam === 'string') ? [bKeysParam] : bKeysParam;
+    	if (!bKeys.length) bKeys = g.buildingKeys;
+    	const bKey = randPick(bKeys);
+    	console.log('Pick random building', bKey);
+    	if (bKey === undefined) return;
+    	m.path = getPathTo(g.buildings[bKey], m);
+    }
+
     function moveTo(m, dest, deltaT, speed) {
     	const maxDist = deltaT * speed;
     	const mVec = vec2(m);
@@ -856,17 +1093,11 @@
     }
 
     function simIdle(m, delta) {
-    	if (m.path.length) {
-    		// console.log(m.x, m.y, m.path, atPoint(m, m.path[0]));
-    		if (atPoint(m, m.path[0])) m.path.shift();
-    	}
+    	checkArrivalTrimPath(m);
     	if (!m.path.length) {
     		// TODO LATER: Do a momentary rest? If rested then continue
     		// Choose a new random destination and path
-    		const bKey = randPick(g.buildingKeys);
-    		console.log('Pick random building', bKey);
-    		if (bKey === undefined) return;
-    		m.path = getPathTo(g.buildings[bKey], m);
+    		setPathTo(m, g.buildingKeys);
     		return;
     	}
     	// Move towards first spot of the path
@@ -874,22 +1105,83 @@
     }
 
     function simProd(m, delta) {
-    	if (m.path.length) {
-    		// console.log(m.x, m.y, m.path, atPoint(m, m.path[0]));
-    		if (atPoint(m, m.path[0])) m.path.shift();
-    	}
+    	checkArrivalTrimPath(m);
     	if (!m.path.length) {
     		if (isMeepleWorkingAt(m)) {
     			moveWorking(m, delta);
     			return;
     		}
-    		const prodBKeys = g.buildingKeys.filter((key) => (
-    			isBuildingProducing(g.buildings[key])
+    		const prodBKeys = filterBuildingKeys((b, bt) => (
+    			isBuildingProducing(b) && bt.classification === '🪚'
     		));
-    		const bKey = randPick(prodBKeys);
-    		console.log('Pick random production building', bKey);
-    		if (bKey === undefined) return;
-    		m.path = getPathTo(g.buildings[bKey], m);
+    		setPathTo(m, prodBKeys);
+    		return;
+    	}
+    	// Move towards first spot of the path
+    	moveTo(m, m.path[0], delta, IDLE_SPEED);
+    }
+
+    function simCarrier(m, delta) {
+    	const arrived = checkArrivalTrimPath(m);
+    	if (!m.path.length) {
+    		let bKeys = [];
+    		const b = getBuildingOn(m);
+    		if (m.inv.length) { // We have something...
+    			if (arrived && b) { // If we just arrived somewhere, then try to do the drop off
+    				console.log('Attempt drop');
+    				dropResource(m, b);
+    				return;
+    			}
+    			// Otherwise find a location to drop-off
+    			bKeys = filterBuildingKeys((b, bt) => {
+    				return needsResource(b, m.inv[0]);
+    			});
+    			if (bKeys.length === 0) {
+    				// If we don't have a proper place to drop-off, then go to storage
+    				bKeys = filterBuildingKeys((b, bt) => (bt.classification === '📦'));
+    			}
+    		} else { // We don't have anything in inventory...
+    			if (arrived && b) {
+    				console.log('Attempt pickup');
+    				pickUpResource(m, b);
+    				return;
+    			}
+    			// Otherwise find a location to pick up from
+    			bKeys = filterBuildingKeys((b, bt) => {
+    				return hasUnneededResources(b);
+    			});
+    			// TODO: Limit to nearest 1-3?
+    		}
+    		setPathTo(m, bKeys);
+    		return;
+    	}
+    	// Move towards first spot of the path
+    	moveTo(m, m.path[0], delta, IDLE_SPEED);
+    }
+
+    function simDefend(m, delta) {
+    	checkArrivalTrimPath(m);
+    	// TODO: If near enemy then handle combat
+    	if (!m.path.length) {
+    		// TODO: If combat, then move toward enemy
+    		// Patrol between defense
+    		const defBKeys = filterBuildingKeys((b, bt) => (bt.classification === '🛡️'));
+    		setPathTo(m, defBKeys);
+    		return;
+    	}
+    	// Move towards first spot of the path
+    	moveTo(m, m.path[0], delta, IDLE_SPEED);
+    }
+
+    function simSpirit(m, delta) {
+    	checkArrivalTrimPath(m);
+    	if (!m.path.length) {
+    		if (isMeepleWorkingAt(m)) {
+    			moveWorking(m, delta);
+    			return;
+    		}
+    		const bKeys = filterBuildingKeys((b, bt) => (isBuildingProducing(b) && bt.classification === '🪷'));
+    		setPathTo(m, bKeys);
     		return;
     	}
     	// Move towards first spot of the path
@@ -902,7 +1194,9 @@
     		const simJob = {
     			idle: simIdle,
     			prod: simProd,
-    			// TODO: Other jobs
+    			carr: simCarrier,
+    			defe: simDefend,
+    			spir: simSpirit,
     		};
     		if (simJob[m.job]) simJob[m.job](m, delta);
     	});
@@ -939,11 +1233,7 @@
 
     function selectBuilding(b) {
     	g.selectedBuildingKey = b.key;
-    	const type = buildingTypes[b.type];
-    	return `<div class=b-name>${type.name || b.type}</div>
-		<div>Resources: ${b.resources.join(', ')}</div>
-		<div>Production: ${type.input.join(', ')} ➡️ ${type.output.join(', ')} ##%</div>
-		Upgrades:`;
+    	return getBuildingInfoHtml(b);
     }
 
     function tapWorld(e) {
@@ -957,12 +1247,16 @@
     			g.creating = false;
     		}
     		binfo = selectBuilding(b);
-    	} else 	if (g.creating && g.selectedBuildingKey) {
+    	} else if (g.creating && g.selectedBuildingKey) {
     		g.creating = false;
-    		const b = addBuilding({ x: e.clientX, y: e.clientY, type: 'connector' }, g.selectedBuildingKey);
+    		const { clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY } = e;
+    		console.log({ clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY });
+    		const b = addBuilding({ x: e.offsetX, y: e.offsetY, type: 'connector' }, g.selectedBuildingKey);
     		binfo = selectBuilding(b);
     	} else {
     		g.selectedBuildingKey = N;
+    		g.upgradesOpen = F;
+    		g.assigning = F;
     		if (classes.contains('road')) {
     			binfo = 'road';
     		}
@@ -988,6 +1282,9 @@
     			upgradeBuilding(building, upgrade);
     			g.creating = F;
     		},
+    		'#b-on': () => g.buildings[g.selectedBuildingKey].on = T,
+    		'#b-off': () => g.buildings[g.selectedBuildingKey].on = F,
+    		'#b-up-toggle': () => g.upgradesOpen = !g.upgradesOpen,
     	});
     }
 
@@ -1006,14 +1303,18 @@
     }
 
     function setupDom() {
-    	setHtml('#jass', `<ul>${JOBS.map((j, i) => (
-		`<li id=jr-${j}><label for="input-${j}">${JOB_NAMES[i]}</label><b></b>
+    	setHtml('#jass', `<ul>${JOB_KEYS.map((j, i) => {
+		const job = JOBS_OBJ[j];
+		return `<li id=jr-${j}><label for="input-${j}">${job.name} <span class="altname">(${job.altName})</span> ${job.classification}</label><b><span class=jr-num></span></b>
 		<input id="input-${j}" type=range min=0></li>`
-	)).join('')}</ul>`);
+	}).join('')}</ul>`);
     }
 
     function setupEvents(w) {
     	const { el } = w;
+    	/*
+    	// Requires that the element has draggable true
+    	setAttributes(el, { draggable: 'true' });
     	let dragEvent;
     	on(el, 'dragstart', (e) => {
     		e.dataTransfer.setData('text/plain', 'w'); // this is required to be draggable
@@ -1030,7 +1331,34 @@
     	on($('main'), 'dragover', (e) => {
     		e.preventDefault(); // this signifies that things can be dropped here
     	});
-    	on(el, 'pointerdown', tapWorld);
+    	*/
+    	// The native draggable capabilities did not work on mobile, so we're trying the following
+    	// which uses "pointer" events.
+    	let pickupEvent = null;
+    	const pickupWorldCoords = { x: w.x, y: w.y };
+    	on(el, 'pointerup', (e) => {
+    		// console.log('world pointerup');
+    		pickupEvent = null;
+    	});
+    	on(el, 'pointermove', (e) => {
+    		if (pickupEvent) {
+    			const delta = { x: e.clientX - pickupEvent.clientX, y: e.clientY - pickupEvent.clientY };
+    			w.x = pickupWorldCoords.x + delta.x; // ** 1.1;
+    			w.y = pickupWorldCoords.y + delta.y; // ** 1.1;
+    			render();
+    		}
+    	});
+    	on(el, 'pointerdown', (e) => {
+    		tapWorld(e);
+    		pickupEvent = e;
+    		pickupWorldCoords.x = w.x;
+    		pickupWorldCoords.y = w.y;
+    	});
+    	on($('body'), 'wheel', (e) => {
+    		g.zoom = Math.min(Math.max(g.zoom + (e.deltaY * -0.001), 0.1), 3);
+    		render();
+    		console.log(e.deltaY);
+    	});
     	on($id('bui'), 'pointerdown', tapBottomUi);
     	on($id('tui'), 'pointerdown', tapTopUi);
     	// Job assignment UI
@@ -1047,18 +1375,23 @@
 
     function start() {
     	console.log('hello shikken');
-    	const c = $id('wc');
-    	const el = $id('w');
+    	const size = Math.max(window.innerHeight, window.innerWidth);
+    	const c = $('#wc');
+    	setAttributes(c, { width: size, height: size });
+    	const el = $('#w');
+    	const svg = $('#ws');
+    	setAttributes(svg, { viewBox: `0 0 ${size} ${size}`});
     	g.world = {
     		c,
     		el,
-    		svg: $id('ws'),
+    		svg,
+    		size,
     		ctx: c.getContext('2d'),
     		layers: {
-    			road: $id('layer-road'),
-    			building: $id('layer-building'),
-    			resource: $id('layer-resource'),
-    			meeple: $id('layer-meeple'),
+    			road: $('#layer-road'),
+    			building: $('#layer-building'),
+    			resource: $('#layer-resource'),
+    			meeple: $('#layer-meeple'),
     		},
     		x: 0,
     		y: 0,
@@ -1073,8 +1406,6 @@
     	render();
     }
 
-
-
     const g = window.g = {
     	state: 'game',
     	world: {},
@@ -1084,23 +1415,25 @@
     	meepleKeys: [],
     	roads: {},
     	roadKeys: [],
+    	invaders: {},
+    	invaderKeys: [],
     	selectedBuildingKey: N,
+    	upgradesOpen: F,
     	countdownEl: N,
     	lastTime: 0,
+    	karma: 0,
     	countdown: 300000, // 5 minutes * 60 seconds/min * 1000 ms/sec
     	looping: F,
     	creating: F,
     	assigning: F,
+    	zoom: 1,
     	start,
-    	getJobCounts,
-    	assignJobs,
     	// test
-    	getPathBetween,
-    	doesBuildingHave,
-    	consumeResources,
-    	isMeepleWorkingAt,
-    	countWorkers,
-    	getPopMax,
+    	getUnneededResources,
+    	hasUnneededResources,
+    	needsResource,
+    	dropResource,
+    	pickUpResource,
     };
     document.addEventListener('DOMContentLoaded', g.start);
 

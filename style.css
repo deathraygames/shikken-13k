@@ -1,5 +1,5 @@
 body {
-	background: #444;
+	background: #667;
 	margin: 0;
 	padding: 0;
 	font-size: calc(14px + 1vmin);
@@ -24,10 +24,14 @@ li {
 #w {
 	width: 1000px;
 	height: 1000px;
-	border: solid 1px black;
+	/* border: solid 1px black; */
 	position: absolute;
-	background: #eee6e6;
-	box-shadow: 0 0 5vmin rgba(0, 0, 0, 0.3);
+	background: #f1e7d9;
+	box-shadow: 0 0 5vmin rgba(0, 0, 0, 0.8);
+	cursor: grab;
+}
+.creating #w {
+	cursor: crosshair;
 }
 #ws, #wc {
 	position: absolute;
@@ -43,12 +47,13 @@ li {
 
 .ui {
 	position: fixed;
-	background: rgba(0, 0, 0, 0.1);
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
 	width: 100vw;
 	display: flex;
 	flex-direction: column;
 	/* justify-content: space-around; */
-	padding: 2vmin;
+	/* padding: 2vmin; */
 	box-sizing: border-box;
 }
 .uirow {
@@ -64,6 +69,7 @@ li {
 }
 
 button {
+	position: relative;
 	border-radius: 2em;
 	border: solid 1px #555;
 	background: rgba(255, 255, 255, 0.7);
@@ -73,25 +79,49 @@ button {
 	cursor: pointer;
 }
 button:hover {
-	background: white;
+	background: #ffd;
+}
+button > i {
+	font-style: normal;
+	text-shadow: 0 0 0.1em #000, 0.1em 0.1em 0 #000, 0 0.1em 0 #000;
+}
+button > b {
+	position: absolute;
+	bottom: 0.5em;
+	left: 0;
+	width: 100%;
+	font-size: 50%;
+}
+button[disabled] {
+	border-color: transparent;
+	background: transparent;
+	cursor: unset;
 }
 button, #blist {
 	transition: all ease-in-out 0.2s;
 }
 #binfo {
 	background: rgba(255, 255, 255, 0.5);
+	display: flex;
+	justify-content: space-between;
+	padding: 1vmin;
 }
 #blist {
-	display: none;
-	padding: 1em auto;
+	display: block;
+	transform: scale(0);
+	padding: 0 1vmin;
 	max-width: 30em;
+	min-width: 20em;
 	background: rgba(255, 255, 255, 0.9);
+	color: #111;
+	margin: 0 auto;
+	overflow: hidden;
 }
 .b-name {
 	font-size: 2em;
 }
 .bselected #blist {
-	display: block;
+	transform: scale(1);
 }
 
 .bselected #build,
@@ -117,6 +147,9 @@ button, #blist {
 	text-align: right;
 	padding: 1vmin;
 	background: #fff;
+	color: #000;
+	width: 36em;
+	margin: 1vmin 1vmin 0 auto;
 }
 #jass ul {
 	padding: 0;
@@ -128,16 +161,20 @@ button, #blist {
 }
 #jass b {
 	display: inline-block;
-	width: 2em;
+	width: 3em;
 	text-align: center;
 }
 #jass label {
 	display: inline-block;
-	width: 16em;
+	width: 18em;
 	text-align: right;
 }
 #jass input[type="range"] {
-	width: 16em;
+	width: 18em;
+}
+.altname {
+	opacity: 0.5;
+	font-size: 65%;
 }
 
 .up-action {
@@ -148,30 +185,36 @@ button, #blist {
 	justify-content: space-between;
 }
 .up-action:hover {
-	background: #ffffcc;
+	background: #ffd;
+}
+
+#b-up-toggle {
+	padding: 1em 2em;
 }
 
 
 /* --- SVG --- */
-.meeple {
+.meeple-g {
 	transition: all linear 0.1s;
-	stroke: #000;
+}
+.meeple {
+	stroke: #5d7275;
 	stroke-width: 3px;
 }
 .mj-idle {
 	fill: #777;
 }
 .mj-prod {
-	fill: #0c5;
+	fill: #3e6958;
 }
 .mj-carr {
-	fill: #cc0;
+	fill: #e0c872;
 }
 .mj-defe {
-	fill: #c50;
+	fill: #d4804d;
 }
 .mj-spir {
-	fill: #05c;
+	fill: #5c8b93;
 }
 
 .building, .building-connector {
@@ -192,6 +235,11 @@ button, #blist {
 .road {
 	stroke: #b99;
 	stroke-width: 4px;
+}
+
+.b-prod-circle {
+	fill: none;
+	stroke: rgba(0, 0, 0, 0.18);
 }
 
 .b-outpost {
@@ -236,3 +284,14 @@ button, #blist {
 .b-urbanHouse {
 	fill: #bb9;
 }
+.res {
+	stroke: #000;
+	stroke-width: 1px;
+	fill: #5cc;
+}
+/* https://lospec.com/palette-list/japanese-woodblock */
+.res-grain { fill: #b1a58d; stroke: #e0c872;  }
+.res-rice { fill: #e3cfb4; stroke: #b1a58d; }
+.res-stone { fill: #5d7275; stroke: #2b2821; }
+.res-wood { fill: #624c3c; stroke: #2b2821; }
+.res-ore { fill: #243d5c; stroke: #b1a58d; }

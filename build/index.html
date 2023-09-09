@@ -1,7 +1,7 @@
 <html><head><meta charset=utf-8> 
 <title>Shikken</title><style> 
 body {
-	background: #444;
+	background: #667;
 	margin: 0;
 	padding: 0;
 	font-size: calc(14px + 1vmin);
@@ -26,10 +26,14 @@ li {
 #w {
 	width: 1000px;
 	height: 1000px;
-	border: solid 1px black;
+	/* border: solid 1px black; */
 	position: absolute;
-	background: #eee6e6;
-	box-shadow: 0 0 5vmin rgba(0, 0, 0, 0.3);
+	background: #f1e7d9;
+	box-shadow: 0 0 5vmin rgba(0, 0, 0, 0.8);
+	cursor: grab;
+}
+.creating #w {
+	cursor: crosshair;
 }
 #ws, #wc {
 	position: absolute;
@@ -45,12 +49,13 @@ li {
 
 .ui {
 	position: fixed;
-	background: rgba(0, 0, 0, 0.1);
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
 	width: 100vw;
 	display: flex;
 	flex-direction: column;
 	/* justify-content: space-around; */
-	padding: 2vmin;
+	/* padding: 2vmin; */
 	box-sizing: border-box;
 }
 .uirow {
@@ -66,6 +71,7 @@ li {
 }
 
 button {
+	position: relative;
 	border-radius: 2em;
 	border: solid 1px #555;
 	background: rgba(255, 255, 255, 0.7);
@@ -75,25 +81,49 @@ button {
 	cursor: pointer;
 }
 button:hover {
-	background: white;
+	background: #ffd;
+}
+button > i {
+	font-style: normal;
+	text-shadow: 0 0 0.1em #000, 0.1em 0.1em 0 #000, 0 0.1em 0 #000;
+}
+button > b {
+	position: absolute;
+	bottom: 0.5em;
+	left: 0;
+	width: 100%;
+	font-size: 50%;
+}
+button[disabled] {
+	border-color: transparent;
+	background: transparent;
+	cursor: unset;
 }
 button, #blist {
 	transition: all ease-in-out 0.2s;
 }
 #binfo {
 	background: rgba(255, 255, 255, 0.5);
+	display: flex;
+	justify-content: space-between;
+	padding: 1vmin;
 }
 #blist {
-	display: none;
-	padding: 1em auto;
+	display: block;
+	transform: scale(0);
+	padding: 0 1vmin;
 	max-width: 30em;
+	min-width: 20em;
 	background: rgba(255, 255, 255, 0.9);
+	color: #111;
+	margin: 0 auto;
+	overflow: hidden;
 }
 .b-name {
 	font-size: 2em;
 }
 .bselected #blist {
-	display: block;
+	transform: scale(1);
 }
 
 .bselected #build,
@@ -119,6 +149,9 @@ button, #blist {
 	text-align: right;
 	padding: 1vmin;
 	background: #fff;
+	color: #000;
+	width: 36em;
+	margin: 1vmin 1vmin 0 auto;
 }
 #jass ul {
 	padding: 0;
@@ -130,16 +163,20 @@ button, #blist {
 }
 #jass b {
 	display: inline-block;
-	width: 2em;
+	width: 3em;
 	text-align: center;
 }
 #jass label {
 	display: inline-block;
-	width: 16em;
+	width: 18em;
 	text-align: right;
 }
 #jass input[type="range"] {
-	width: 16em;
+	width: 18em;
+}
+.altname {
+	opacity: 0.5;
+	font-size: 65%;
 }
 
 .up-action {
@@ -150,13 +187,19 @@ button, #blist {
 	justify-content: space-between;
 }
 .up-action:hover {
-	background: #ffffcc;
+	background: #ffd;
+}
+
+#b-up-toggle {
+	padding: 1em 2em;
 }
 
 
 /* --- SVG --- */
-.meeple {
+.meeple-g {
 	transition: all linear 0.1s;
+}
+.meeple {
 	stroke: #000;
 	stroke-width: 3px;
 }
@@ -194,6 +237,11 @@ button, #blist {
 .road {
 	stroke: #b99;
 	stroke-width: 4px;
+}
+
+.b-prod-circle {
+	fill: none;
+	stroke: rgba(0, 0, 0, 0.18);
 }
 
 .b-outpost {
@@ -237,9 +285,20 @@ button, #blist {
 }
 .b-urbanHouse {
 	fill: #bb9;
-}</style></head> 
+}
+.res {
+	stroke: #000;
+	stroke-width: 1px;
+	fill: #5cc;
+}
+/* https://lospec.com/palette-list/japanese-woodblock */
+.res-grain { fill: #b1a58d; stroke: #e0c872;  }
+.res-rice { fill: #e3cfb4; stroke: #b1a58d; }
+.res-stone { fill: #5d7275; stroke: #2b2821; }
+.res-wood { fill: #624c3c; stroke: #2b2821; }
+.res-ore { fill: #243d5c; stroke: #b1a58d; }</style></head> 
 <body><script> 
-eval(Function("[M='B@reywm@uQj`ilx_T|[TFh[E^NLBYK_KD~mayJirA]I]@IRtLWWgKMoOklTkeo~J[{A]sGqdqQ|F?yBfDIwUPTgAg?~?Fa_E[cNdsG_iBMZOEDEEP?WlOF~{U{Gw?t{^gXZPDq`QwSQrGeHiKHZ_TYsAZc}SHzaG]BTsyu?MadLiMNa}zro]zKIYS_UFYX?cxzylZMivL__KBeOIgG^FPuhRxk}cpVY}~NBmM~YR^Qa`@CwC^jOR~GXJAWkI{~]QebGz{dZdnRpzLh]MBHmJob{@D}eQ]|]uQEyGeJJuwnK_cSsxX@cL}hC?UhAKBccOJGfxQ}wSoE`i{^l@oIsbM`C^bulmb`Q@Gaqy?peq}Cd{anERcOdfMKByNCxfnXfuHKIc]ch~XyNtuoXT@ij?EJ`AVwlJyVfVvwyYkUACK]ox@dTQUKiP]xu@X~JOtQ@hfeUMV|rmd^rnldxpdnKmli]Y^_IQIXU{Q`W}pPf?yCj[_c|jPcVtNmU{Ks^EVUv]Ca^ejExBUsSFh^{KCZbZiB@tBNKNNuUXCyjEP~cD}mmyCnSCVcrPysanogdgyhBGT@zvMKTiWGw_dMnWkxT?biZo{cWjRvQBPyaQK{lBHB|]Vpo^GuQ@oj{`qNnI?ThJy^oQlsWzx{bOCaDGlsb{UhvvjLpGTFIbiiPjJ|ndiWkZmsGoju~@dknSJ|Deo^?f@tsHtUqYKgX^UwQ[jH@|SPuqgnPvW~vUdlHAQIkdz?fRs}ZmflZcYXXZQsVRhEemqZ}SPt{YfMcOkDF@lQwkcbrBG@V^GBWfwL^J]CfgPgIlkk?RgigMTC?XYelBYrrV]XUTWrpTA{b`UiN`jqYikprRMns]qy`?siNolrPoIwg~KgyXIh{hgnBw|`y{tKDpfnpM?{QvVPNmBBG_Lqxmd?PgtcnsKLOnr_YTsGOeutEwG~RUx]c~^qUR]GpDu]G?VW[doeuOq]rLysr{Mem_ORzHWf^xCqDw[{RfHqEyqO{[`kjBX]IkHxoCXJDpx{[P{nNas}oZ{KZQJvFIZFQ?kuzjixX{s@VWMGRcA]RREWt_shK^WpXnDrOr{wJrGSCDH]QnLnT]ZLYlXLICu?yIEfSoF[bGjlHfJ|Gl]xacGWcf@ZgXgoyxM~ThIUX{Jrb]aKcRz@{|~n[PJslYYd?s~dzN@dqspMsZQHwQCH[EA^zwQqomtAiOkfUqJevzP]ive|l}S^txHptwwuuAIC|[KLTjtcGWBniODHDsurBfEBRFY~PMoIery}I]xNVxKF|HE}m[CTiWGyZsscMq}KYCWiYhmnKuvkjiZflrcj``SUU}k~wcOOM]gu_r?Z`bmZOqMBUg?{SrDRMtNqLsYGucxeVghhmRP^q|PvNao{o~AcDE^zm`BCG}kUM^V^hKalwgs~NrPBtJP[AZIwLH[VYsngVteM[@}bWih}UPUZ@VUsh`h@XUnZ{ObKGjDBzAGte~l@?ucnVYDWimlRoYhBmdrwz?AXlQynoK|X}CM^mYz`awSKKBvJQZhH]UYbHaj@Tz@JgSMag^q|BD|tCvuqUpxnvMVH`b]^UONghzV|zgY^@wIFdush|b^bA?s@pzmKnHOGbcplDp[@~tL}ehTmP@^uVa^BMPCqAq}SAJtruyYjxCoKi_fZ`XOlfV{^rfdGNHwGIFZCdciS}cFeKZ[xjPbfgW]bhCkI_V}ml?|Yo}@huzizkSMvKPzH@}kv^i^PssxCG_Oqophpp[EwS|wY|V]dRQluMzZVHoed]IzyFi]^[xTczOvDQB?`@HVrepqdllBPaQMselkBhY?oxocht{Ic~wsPaaNvIp|?tbTbXfzwKVG`uPh|KyHcQfFAy]KkaHOsXw|ynVI`jE~|eB[t`~crQ[Y[qAQtfCdMBlvWFK@aLXPma{eoZhGuj}sHYNo]}w~OJNM`mxYvjzKEheThdjgycMhQom@DMnc}}sIDm_wqCjgfdx]Z_hE@i{WWN@`stBJ|Rry}jDY?CGhKgP?tD@pHIn_tcDh]hTsVXUXyvB]jJcCmpajMP~YfEAKTG@JfDIxx~`CGI~t{fMDEF`QZo]HsehnslSjHvQnYAUPSKRX?_iXNCgF?DITp|{TQljd^`^DRUpHSnl~_{Qlu|U}KRQaCha`@SqDJqZX[Tq^i]~Y]WJ~JeseZQn~gtMB@SheWTA]zFInAQRMJ@lhn^kMaqI@QdkDtiYZrubDvtfUrV}wEBWfIjEc^orazpKvcQ`IZ?g[YNuIaKpkwieW@vW|VIDSdbkrLJ]KrF@eiD}Y{t?FrgF_UNHUezLelCcBadVOTDXwZosD[UiSVMKNuR[n[dU{viVVoX}hrAVwE?@[b~LOJhIXPkB?sww{g{DcIJCiyDmQke{{mPo`KnsFqaVKPe`dCffhvfN}PvkljqHaUOuPycUyq[Hdk`prNlyBwdGwTyL`IBqmARxbqXBAqOoGeOBQznwIUh}uOcuuaf@gnHvGLBGCNjqGmyLhvbpDFVvuWFjPLD[OqSamobzkzVe?uCSe]B^EqhxGKoVzCtSvwpJsgcn_C[WfeI[iGAFiJVMhqxHX~fF`OQuux?cO@Vsk[loLaVLdHrIiNP~{EKklnuo}yvlDqTFrp?nafYY`r|rWww|}UR{MnHHUv|E~ibu_XnANqstYjRICIj~Qp^Q[mySuoTWSKeiDyHEyO?_M|EB~fT_{mmkTcYpsbM}|jo?ksmBZkzTQvSC`umHR?jxHr`EoPFkQVdw]qqjdh~sjxfYHcLOIwr`@nC@zNYrfohtk@@bMdePEsx~NG@[iIC|DNvt{rlBxI}|E@t_A^tx@QQ]aIp?WSajgMFNt~R}Ocqe_vS{Q?kNdNboIvQR}c{qWn|wu}F@JNUndazEICARr}Pf{KHw~xSuWLFwFOQUoqh?K{pRpIdJPhrEsh`wetUvKLUuxjFeytCwfEFk[POWsapWdGnVIOfxWudfGV?HSPBf[wkhJ]K}``qROMUZhHHmSyQC`n[aTgyyMZML^DhI[hhmjx}~}S[@FOM}w_NBfCBnrVBi@nnwiI_bfvpitqVN_jnnNhid@nCnV`J]qJbWcNDaSYcNb]THAeBhKcqJ^zomWA}gYglm_Lml~[[U[DXeTdKZeacP`YyHXCeYWtfyWrOCK[~humeHWm}lgpwrZhy]fcTNKMUE{^fCvJFLLZWf{[]rQq`sKDXCzMghRj_ozRO|UA{XwdSjFnnrAJbJeZuymdwMWDi@a~cjFPKzoaF`hUNvWukwQkKv^Qx{N~k]Hqpm^[tcbi^pXwGh`^OPWpGOD^kwAwYCx@`_PyOmXsbPGFbh^W@zTKbJk?ujU~DXHY[pPhXmEcO]jATJeWkBkhYJsuGNO_z`DwkQe_^MgWIhrRjzy~dL}Oe|`UbpOfN`abOkn~|@NUkYo?vfuplxbRaG[ditai_AIbGT}rLWub_jGiyHKLj?bYqcVcBgMr]_puTeaV`Xz`PMv`GbJQ_ODOJdroFsipQphgr{ZkopxTGgqJ?ls|ocJDnZj^fAE|vqFpjS@Ueu?eyNnyLqzCvDWL~n_YoYpSNP`^mNw^OiXt[VVY|Yz|?h?JGzxftq]uQnMYWVWE`yUHYrqyj~J{`zxE@AwDmcrlRLnXCJR|}k]M{aYOOXsoErfl|gBr_acwOO_BA`JSFMiBTcVopwFoehBMFWgYnsRnXqXp[DtaCQVv`IfoHUm~yenfJz@OD?yI^lGFo@jF~u_ZiZjmVmw]d?lRY}UZV{y[}x{aa?yEhKMcVGM|D{[SOw`_`OsPCfGMrUBkxS{iSXfBjHBks`tVkE}OjHYGn[QKN]~oDkKH?^T[jo@~TdYQ?dLWWiALojG[bcRo^gX@juf~xZIoqsdqHDB[XWVBD{f`PxhJINzlzeMSiYpGK^B@B_`PpVSUxZ_eIRbuIhZkwCbo`NQXBjTYHGglWiaRTfENE[|oaTEFWvgw~KfZfKjodkFhY^e}@MRiNR_zPHMOL}CzWK{i{yKUY^UElIOloxgMGGJokaosKoE}QUznYxhZvt[VZNU_wF@fsy^AaImQ]NkA]{NJtyLO`qCSNUCcvo[{E?yVk|jHslDlffOgUno[~urtLo?VsSgKptLLbDcFJyFJYTXj@?xLoHpfb[}G}j?Yf@_HynO|UZ?j}sakVvbrHmyGLZnR^hGRkexfFj?rxUIM@iI`InpnsH?IGRC|yBzYQleokJe{luWLn@@tMfAjSwrl^W?InVoe{bOHRObVsH`XtnhUXzDyDI_wZanFVuCJpvBC`e^sJ_CtquKb}GZn~n|AVbel??duSccj|CFPnW|mGiz@ebduCaiqOk?OOQ~e?k@qBZTfzlVp|GFVcAUkSesFbIpf^rzRIWqtr]ahR^eEuFa}[QmFrkxObdQb[h]p_e|J_FBAIOdNgPSWvedOcktPszzbvDZzEEB?S@uJ[y_]Coykahupz{hmyQLMmKgK`eKmAV~zzn?zSwbvZgMDM`nfaU_n_axUeeA^oE_SuA[TKhpx?PpNrBHazK|NltkyYp]hFYobxxK{xuBj^TgOy@oA}uWDdH{ONlAfZuqY@BhkfUvu@ZkxoVhMiVhN^~[xC|NKhdP|YKk|qetjc?yfs`oQUMwJSenjD@RZo[ggKXHCGkwBLLxg|b?g^HXF`GfRQETY?yPgBX~lI?xZNpXcPLnBssxrdTo?IuMv?M]_afITnoRjNZylWkXZbjY]tLTIi__WaWlTNjAcWVyd^YAXbCNFdHmIkfuq@@?N@eraSAx]cDtZIhB`UuSKiZFnWQpMYDwJ^f~cqUol`Cc]IuSX]B}l]uktDiUoal[RMRE?UMlFMyJh^_TIdtb|CMQJ?eiQDVPIBwmWxPYkrepcxaMJ^CiUrHWeF}}DQtmUgU~JFwXg{AQHmbQj^ZzDZGYWoHWmC`fk_YLaS]TxJBj`fVx{tXImZF`ZBCPnzcoYDvE}RLEuCyLNLfC~APeskKVZUnPEvSpw?EHUZr@~uOaBHmCPVVoro|jhlMBMAAU]~b}lXtqnCjs@v_POcqEtVHum~pfHxWwBG~XqKPbGj]pozxQRm[HcKMQhL`PikhPOKMDMpMC]UZnyFNiVy~ySZK`lF`Oa?Tbx^?|URFZtba_MffsSunRNy~Pq^aoRbq{oxhFMOP{j?OJNu{b}{hNQY]bVwngw}[~FJI@KNM?ruqStcohrm'",...']charCodeAtUinyxp',"for(;e<9006;c[e++]=x-128)for(x=1;x<128;n=p.map((i,y)=>(t=r[i]*2+1,t=Math.log(t/(h-t)),A-=a[y]*t,t/1000)),A=~-h/(1+Math.exp(A))|1,U=o%h<A,o=o%h+(U?A:h-A)*(o>>15)-!U*A,p.map((i,y)=>(t=r[i]+=(U*h/2-r[i]<<15)/((C[i]+=C[i]<5)+.1)>>15,a[y]+=n[y]*(U-A/h))),x=x*2+U)for(p='010202103203210431053105410642065206541'.split(A=0).map((i,y)=>(t=0,[...i].map((i,y)=>(t=t*997+(c[e-i]|0)|0)),h*128-1&t*997+x)*12+y);o<h*128;o=o*64|M.charCodeAt(d++)&63);for(C=String.fromCharCode(...c);r=/[\0-	-@]/.exec(C);)with(C.split(r))C=join(shift());return C")([],[],1<<15,[0,0,0,0,0,0,0,0,0,0,0,0],new Uint16Array(51e6).fill(1<<13),new Uint8Array(51e6),0,0,0))</script> 
+eval(Function("[M='OPBTkXCXjtPDGUcFEVid@fpJm_opuhLZjInwufEM`LB^]|`Tf~Va~[KlsNkr[AuwTVQMsHco[kPsMHRlPQDMtrAQgAkKyPBqSK?oI[evAr}xTwwFObYFZlQ`H]bYl~oZ^TZ|mSvSusoiFbO~`e[iOrssjQsYkCqqYOhZhlZIGY~BcyfJihBCcQjUfEzr[}T?OUkbSo~rs[GJKa}XYBn@QpeavN{mTdSqLN{M^bcNLowNhncrALdZGGJA~~HWBqW]Y~|f`HYaL[Z}ACvjlYM|YvRzBXy}x?~[LoRKeXzvrw}t[jd]OOb@@Wo[i@t^qsEMm[]IbhGFxobZQ`prBRWkmw|w|K}a{i?hHUBbmRH~[IEbnxA^JhZo}yaPkD^XoTUj]soO[cifKt^BG_D{cHAayobGYKMBDw|Vt~stQ[@NutCCBVc{qUz~MFw@tgFWI^gqcqcey@r`TLw^uan@VG]xc?nwxXrZ~WoQFlkZnMD|em}mcCdYd_xBYcDxQ]xFtl^cln}~i@xbW]vauTb?csKt?Z@BNqQU[LBvOO}AS|umsnNaxWjpc}NHH|P`ZR`YnO@KmeBG^QkrYXR`r|_DWzXvMY{{RnPGswkrgDFt{mw_omQfFnH]~_GgSlONloxtNvQuEJ_bS?TqYKxk?`HbyfKyn^VfTAJXPvhgTHo~`|VFRBhjoIISwNHlwVMko`M^A@aJKALSKdhy]]nhyZo?TNeFs|S_jX{?sJxBAw@ttdVG__[rYhm{pEImzbL[|fbWFNBS^??CtfdiZduUWGH_bGsQsi`?^AukcrP{bFbNS{osOqYUII_MQoLLBU?FXvPaWRo]qkpf]SRlzFFhEdls}vOgg?MrXgrtepCefDt[eMzqJu@]erLMIqW?Cu~HIAHB}mRKxrqfktqTW_Tah?xkFRPKaV_nqSFyITsjyyXunFmTROcVWXnwKhVjIHmwLZlvlDHpgeAYvdZ?]Z?Wb^QHA_bnINzod@~mfk]_~gCU~]EiVGV{AU`QOro}b{[pfcrKzKd@GtwE`jXql{AaPHRDgpwSQGghslExN]zJ]TMQOBrRf`aKfUBteMv[EJ`bh]H^CnKBYVH`ReeOC]uKBQI~XFHajC[oXsQf]yz[DUN[|RIA]uQeeWbDo]btOW}m^~XXNIVGDAxK@dsktqSt_KHp]`g{WUVm[DISGuBuyCJhLKs~NWGFy{kqg_LNpAlLfadITciXqzy?ikCUHMtW`Lu^sOJfX|Ze_m[k_WUMA^}HJe@]osFKcPGBlttUEh[Yg~HhwqxXLMvOcZeeJgSV@Aytn[@wzrLX]{gMEGu~[[?]fk~CUO~FiLjYI[aCL|YnVIbOss`i]asL||_gehnKBEofJWVieSQigKknr_|gR?N~Rc]vjHwFAAxEvHsiqUAfy@VhTQ^Tni]g{JsPe~As^}pXpymj}h?K[zw~XQybhTrR[NKMnftBoPiCVDRjv~afCYcxsgjSA{Pbl~D~a@v?q|OCtA}ommhP}a?HQ|kc{ze]jFbKb^]}{|czPNksD?KzVXz[XniD]KZQYNupY]Gp~VRK]ZF@uuVurBIDXzX_NlOuZ?lkVSozaA{EtpQvIVz]HUSxTs@s`T?~PkAz_mucCVXPOJoJ`qAQBxsqaVfM_T@`kV@qDjcBaT}YxNz?JAUzfViExH@uxTnuP[UokN|p?UNkBSKk{xHQ{fr{Ics{`p}CJQh^AxGvVpIyvtuD{EzvZUwiP``X`Db]Vw^zlCjC[Ioy__cvKbaNDCImjHkcJAO^rsa]|[RDYxYeGH~}IdTCL~KcFmkMVXBLc?icF[kRUZApFGeYmU^r@yRH^gZcQbCftPwKsq@paI?~CiII`H]{pl_}UE~Tl^TsdCcJdoouGNZQqChCp~xwQJaZu^~uDFtRXRS?kIVnDdzH]h?KUtyAbrhk_B`hL}~GJOPVlPMCmpEif}CUL?qb?cnPia||sF`[x[Q|nUIE?CHqeau]LiLq?WPEcFjcaPSvCr`o__Jz]gpbra@@W]mt?vmxlEn}{adey@W|ZqdDpcmojs_v_qRB~S`H^^qtkYTgjIykfXc[HGHK{FZfZvQpW}IteuYLMvIHbUHSt}wLvqaJiADHoj}StYnrmGUrTe}OH}Tv^MQis[yV{BiKQWnTSADUoSfk_{TJ@jj{kdJms@VCczXzJYy~^{F?BI@gzxDwTAstiTfDTEWPXkLLtwvKeNL}uTa|iCXMQgZcjoJXoswzwtZZw?`HXVhQTLpbmBROYkpdcqK[vtVwRwRpHgzFH|SyIh@`kO[GrQN?c}FH~SZb[mUUE}Sw@VTpvYM_gEF`C_cJse^gG`W@ZTAv@PqzoiHePrela@gxzh{Qnd}SOYeU`CrK_|MJ?VaguI[sxozYq[KxWhUl[q]~ciqXyzuU?aJOqhE[@PNJsKAfobKdT~ut~JDPlTrqx]H?KhSrSuMsYjvkUpsUKTZ]BITv@_BFSlbCVKIB]sJ|BrOOEAjKuwDuvuc}B`U`qkRX[]]wmBRllEljVtfHBPvf{e[CywOBv`@S~GVOcIgI`w[OGn{IfNxMU}Ahsga`WR_ySAlFauQ_zZMEUVfzr`rBn^[L]IR[giKBgsxTRC}kSzVyUgGJbUXeDfkOcYgKdhcapQVXtJ@OYeSfqfhfCBmon~DrAghomfR]zYLEsSK?GtWFwtCCMsE]jbMv^mMQ@~VOz`JFbyC?UP}`YxD_`C@lFK_yKGaQnjlhJgvJDojF}pXTrPNVGJq^ASxUWqHYxtIRBjc|~a}VyElzDx|rhXy|_i_vmejK~zyIEuHqDIZVUQxVLkGaO{W|Op{Hw]iOexmKXnXRgtCkBSTDd_[sZJ_I}}IOgStdFWFj`{kis`jYLFSsNyfBHtXi]PzI~_Mqg`{QU~|ojEpWedo~IMe|pUy~EpASSLvE{t][s~dI_pKyvWf~QnpHRIYY]cHZVbZxAIGIfi`}EmbOgwuwU`SZOM_g}KBYKwdSpfVWSyfTnNiz{wP`J]`r~VGVvrgQfI``}CHEyifd|~v?zlspdpZpVMeScLEiNe]B{`DG}fcZRGN_Br?WJKVp~i@zNx`dO|D~srI_@fQOl|Car]ZrQGqs]JeXrSTa}XpuHimgoipWjpE[x^foFwuP{mxk^tr{Dh~KY|[?poeXErvi~IP_ozdX]uT?laVkfF?QuvRvy}FPH?]}MuUPWYVSW?K@`lhns[nsfDgdaf]^oJPNtMSZujYI~xdccIK|]wCIN`PyTDERiY@W~lFXbpIumsM|emesXrDipKC[UoSyyPrU|MQWxZafC`NzAzAl}aE`LiqcTng{xuP[RdsELA}p[V~Ppk^J?yVhx@^My}ksBDCXxs~?Zmm?QYp_]oGPeLtY_B[S?{DdKcQ?egu|AFLirbSsCbWlswgRhwsZvnqBK^wZ?HUsGjoDK?nqhKQ`PmT_}bKMLXwpq}_g}miJN}NNaPqoQWJkmdeqa@oUj?UEvzOK??V^ufuqRmoGH`ztJTE{yDBp^eLiIiT@@[RfDFIM}DH[YPtxOunjf[S{IFnGN@Wx}ZTsE}VOiE`qnqHGJTbW^D{Z_V~YpkzT?rso{DwRu{o_rFxGjo`nf]ICycMKYT^PpTwFgCczStl]VqcQy]v{kVO?FkcVojZOOwtR|`rr?cNml}uhltP]rqtiJdiwHAPxcHteAdix|oywjR~Xn}SoyHnNjPOXOWd?@FTYnJi`qrvy_tZrzYZz{|cKeV~QBIBFJ@Kjkjcfe~Gbz[IzBFyEhyF}iElQ?PEiY~r}@P}eWOTckfWE_iae{EK@{rnl@HxYY@aPXIKI`h_ro`RdHPFI[qM}PvxIqTmmRXW_QmbBuw@iddctIFM~NyYy^oCkAXpI?TgWoBSvrt]fNRWpl?Zo`anJwhP[]FXmzvIo]uPSMwwOFhhqLC@m`xIZmiH~KMuOZ?@boGnsAvdDrdRexJcbrVy~eKDQoDKsL^gTRXs|FDDJeGOFzI?kVbs^pOIbjKWdwezEb~ndzuOXPKRyXd?xo@pVrIKFR[JNuYdQB{`UbxBDOf~qt@YcIsLgYkWZapnLyR~ajfE?HYMo`vYYwzn]ro}qyZX}clcjmPNh@ay_iF[tp^gvVRITTdcV_HxLgRwhcAKveH~[dHM{AefCmWs|pII|bvoSbEoAc]goijuCJ_YnLEzRwNAdtGavDw{pBj|de}IHwpoyPkzIJBcR~HXJ|ya@qOPkitwwWute}FKTLOODxopY~vFke|?@kO^sq`SyamcUAh`H|Pg?d]zXozFuWm?XkeV`j_b~C?}XhObIyLxeaIE`ES?zrRLC{APPvGzrFWNdR[yS~zMvjPORZGeTtomW_AhXU@PG}dGTEzYGfFczeRe}WQd~CHmplk[aXBltUmq?m`xTljed]f@YRrO_eH|vdPXJD@HE`MJWpQRAIgSgp^uAVHWmaLrICPm]@TaBbnzJIykRVHCQt[sXxLDv^FhKsTBLghlYgi?{^J@[kicxA?h?}NRLxXMIGqQd_UPiJAG_d|Ak]N_bQIWjxpZ~bkL[^`TlQyr?YS_Y{}iXlW`lJEfwaoCG@IwuIJkW]@DlMTq}XMLapmNk^RnI}JmrdhbpYY{_KW_nQI@ajHRyNDqPWn|uP_tr_ijOqyDHAQUfvJjAiuPEiTuiK}ZEoQfjyF|Qr}tGtsatdO{b}Fx?CutFd}|cysHmJ^I@YqsxKX?[{ehcWUIIXX{zUrEm[v^{OVz`XZXmHhbX`fBL`ZgY@mt?oxPZZpIjkl@QTUAdPHzmS[gq_Yz@W@folv]`zC^J`Lu^FpWZHsy`Zs]ugWkJZhfQawFtTuDTWnnmrk{GZZJZZZOTPoZBmokJOKJd^mM]m?@gnZnVRPamkvjgkdlh~@UaG?^ntIVO[dIdkFvB|}gjX{LS|sJuozEHTOWVMMpWtuJ|DSn?n^Spbjz?v_^J~vGVWprPRBb_RaeuGJbKcqHZL?ggBHWbmPMZxopJJ}K_LBlqGjNP^hwpbrMzCgCtM}]rB{wPWgKlelHXQdW}jP^rT?eqHLnQy`oOZcHLHapua|xSKXj|uefduz_h}XRBt_XDXR}aq@sNxTbb@|jsRpzwu`ypa_VF}iyT{{PYu|eYIqIjHcsj@bSlh~TjL{WU`wvpFfsBr|jbPDdWf^MiYPKkbcJ^RCt|?~^r`jso~hS~}Lvly[[PBHST]lOfhcWdoGjPvYlf[@r@[~|hSgGqwRiMmS@O`E@d`oUeOY|^aLjMNKi]F_Hwqma`VZvWGCOUjglpXfMzPIbAQYihmbNslzI}jI|Jd|`eZRopVDoi@N_}dQiyLeE@L~dZOPaD[S_C`cgEFcr?p_DUiqvcLz^XGJTebCUWopxtZ]fuSCzOpOqZ?Iq[H_DYQLZk@aLiymPXNjXyvhGaU@uL{`QXJhHSW{aBLdMXPhvsHoaxaShOB_eGagURApX`mymXKwWDMwC}kNPCvBXm`c{HDMx~Yq`vBWmYtSGnpRrQ^TwqVzuORXAKBrRdJJuskPiNRlcMtuE_htyUwU]BlolXoPTLNV_rNWSIKIOvpmuUFg@aybDy]|ti[aKI_hNgawueN@yod@mrYuiypjkUQv]UZoSB_AUNPMAcyTk_WWacvZQgWFgXJ^Q~YwcN}^AXnzrNFNQxQjVRg]aJx@Gb^BkCZ|N`Z|ZGRurGAGXa?]MPFzqj{YRs_zn^dUWdxA?KEfgVE?@pHhpZ}oCpjrw|XrvfwUnViEj?@Mw}Y@NVbjxlCfI|uvfoIrCFcpM??[u}vtvYl`?`|taJ?kROBnY_OeVaI_UkYkz?yjRwqm_hnEI{vBOi}xObZBcVr_^mZrgqgYmG`Mbx[anXric|qjBmWi~PEUzjgAIo]`oqxsf?YlcvJsTwlK]NTkrd]DbZxrvurkQZ|hPA`AaIzlosyHWHjl]^@PIWILAAjWzTDu]fubnJs|kOgINDnGjoupx}knR_oM__uFDVojtBv~^ZAzx|eXqwR]~vcBxmIRSrCLgeZaUkn}mLpb{D?FIBGB]oqxu}hTHHwfwM[_{}QmvTQaOxBu[jSAL_dNZrHE^MAZkXU[KZRxTj[IFwmR{UooFi?QjlGz@oBqSQU[M]tvzPBhhP^pdSombHfcyUTzrymF__Xs_pN_lOFVsIwHM]cpFX{HEuHdQuSOMJX]PbtjfSfzBhsvk`U?pAMY?@GlhXFoNRECmjYlv|agnIaT[ylkQf~KOdU]hKUgDo^SpxPQTG}fW_veGeSuyp{rbf_xL[~cJiuoQSsp}kqQ|HjY}]_g{pzAEBkVkCsOiDuxBhziQO}NVwPvRTzN]QJaPd`@uwPaRbU^CrOQjDk~[wpg`FSAioUtLs{|odfqbjGxnX|nB~~[bzRc[JAUkzYKjrHIPEUGcLlBTnxz`GTn~b@vW`Bo@@_[Y~ueQ?ryJPTuUXqpYN]H{ZNn}W@rVfoKDRohozWlKRTo^eiAw}YL}v`J?KUnTKaTcy`@r@RWxWj|?MQ}LB{ez_tgXMmXlU}~mzDAFLHONDqs^@QioxD[CqphQi_ugJTWd|yk|a?MF}otFUcHfZKr{eDOeedeIQwOMQgo||B~HpRaqJnYGEOlzxghihHugFYVDpmm}dxNFeAoWERC^_SbJduVVzhIYaxWIlmqEkf]`l{buJX[MlpKMCHTn~{H@iK~tc^yxP]^Cf@PJNjIb|@r@QEpIvxUoC}EJarwvQ]ZVnsIvBoyfWRDsedn`qv[UM?wpQ|Bpe[|h]@wb?dsT|tWsDyLmqeNJ'",...']charCodeAtUinyxp',"for(;e<12669;c[e++]=x-128)for(x=1;x<128;n=p.map((i,y)=>(t=r[i]*2+1,t=Math.log(t/(h-t)),A-=a[y]*t,t/1000)),A=~-h/(1+Math.exp(A))|1,U=o%h<A,o=o%h+(U?A:h-A)*(o>>15)-!U*A,p.map((i,y)=>(t=r[i]+=(U*h/2-r[i]<<15)/((C[i]+=C[i]<5)+.1)>>15,a[y]+=n[y]*(U-A/h))),x=x*2+U)for(p='010202103203210431053105410642065206541'.split(A=0).map((i,y)=>(t=0,[...i].map((i,y)=>(t=t*997+(c[e-i]|0)|0)),h*128-1&t*997+x)*12+y);o<h*128;o=o*64|M.charCodeAt(d++)&63);for(C=String.fromCharCode(...c);r=/[\0-	-@]/.exec(C);)with(C.split(r))C=join(shift());return C")([],[],1<<15,[0,0,0,0,0,0,0,0,0,0,0,0],new Uint16Array(51e6).fill(1<<13),new Uint8Array(51e6),0,0,0))</script> 
 <main><div id=w draggable=true>
     <svg id=ws viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"></svg>
     <canvas id=wc></canvas>
