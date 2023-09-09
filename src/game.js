@@ -609,7 +609,8 @@ function renderJobAssignment() {
 function getBuildingInfoHtml(b) {
 	if (!b) return '';
 	const type = buildingTypes[b.type];
-	const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${type.upgrades.length})</b></button>`;
+	// const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${type.upgrades.length})</b></button>`;
+	// ${type.upgrades.length ? upgradeButton : ''}
 	const toggleButtons = `<button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
 		<button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>`;
 	const prod = `<div>🪚 Production:
@@ -620,12 +621,11 @@ function getBuildingInfoHtml(b) {
 		</div>`;
 	return `<div>
 			<div class="b-name">${type.classification} ${type.name || b.type}</div>
-			<div>📦 Resources: ${b.resources.join(', ')} (max: ${type.cap})</div>
+			<div>📦 Resources: ${b.resources.join(', ')} (${b.resources.length} / max: ${type.cap})</div>
 			${isBuildingProducer(b) ? prod : ''}
 		</div>
 		<div>
 			${toggleButtons}
-			${type.upgrades.length ? upgradeButton : ''}
 		</div>`;
 }
 
@@ -637,6 +637,11 @@ function renderBuildingInfo(b) {
 		const percent = Math.floor(getProdPercent(b) * 100);
 		setHtml('#b-progress', (isBuildingProducing(b)) ? `${percent}%` : '');
 	}
+}
+
+function renderMeepleCounts() {
+	const html = `${g.meepleKeys.length} / max: ${getPopMax()} (Defenders max: ${getDefenderMax()})`;
+	setHtml('#mcounts', html);
 }
 
 function renderUi() {
@@ -671,6 +676,7 @@ function renderUi() {
 			: 'No upgrades';
 		setHtml('#blist', (g.upgradesOpen) ? upgradesHtml : '');
 	}
+	renderMeepleCounts();
 }
 
 function render() {
@@ -1179,7 +1185,7 @@ function tapTopUi(e) {
 		},
 		'#b-on': () => g.buildings[g.selectedBuildingKey].on = T,
 		'#b-off': () => g.buildings[g.selectedBuildingKey].on = F,
-		'#b-up-toggle': () => g.upgradesOpen = !g.upgradesOpen,
+		// '#b-up-toggle': () => g.upgradesOpen = !g.upgradesOpen,
 		'#kamikaze': () => {
 			stopLoop();
 			// TODO: Remove karma
@@ -1195,9 +1201,16 @@ function tapBottomUi(e) {
 		'#play': startLoop,
 		'#pause': stopLoop,
 		'#build': () => g.creating = T,
+		'#upgra': () => {
+			g.upgradesOpen = !g.upgradesOpen;
+			g.creating = F;
+			g.assigning = F;
+		},
 		'#cancel': () => g.creating = F,
 		'#restart': () => window.location.reload(),
 		'#jobs': () => {
+			g.upgradesOpen = F;
+			g.creating = F;
 			g.assigning = !(g.assigning);
 			renderJobAssignment();
 		},
@@ -1205,11 +1218,14 @@ function tapBottomUi(e) {
 }
 
 function setupDom() {
-	setHtml('#jass', `<ul>${JOB_KEYS.map((j, i) => {
+	setHtml('#jass', `<div>Loyal to your Hōjō clan: <span id="mcounts"></span>
+		<br><span class="altname">Build houses or towers to increase capacity.</span></div>
+		<ul>${JOB_KEYS.map((j, i) => {
 		const job = JOBS_OBJ[j];
 		return `<li id=jr-${j}><label for="input-${j}">${job.name} <span class="altname">(${job.altName})</span> ${job.classification}</label><b><span class=jr-num></span></b>
 		<input id="input-${j}" type=range min=0></li>`
 	}).join('')}</ul>`);
+	renderMeepleCounts();
 }
 
 function setupEvents(w) {
