@@ -71,7 +71,7 @@ const JOB_KEYS = Object.keys(JOBS_OBJ);
 const baseType = {
 	name: '',
 	r: 10, // radius and computes max resources
-	cap: 0, // capacity (resources) -- TODO
+	cap: 0, // inventory capacity
 	cost: [], // cost to create/upgrade
 	upgrades: [], // upgrade paths from here
 	defMax: 0, // contribution to defense max meeples
@@ -100,29 +100,29 @@ const buildingTypesArr = [
 	{
 		key: 'stockpile',
 		name: 'Stockpile',
-		r: 40, cap: 20, cost: [S, W],
+		r: 40, cap: 20, cost: [S, W, Gr],
 		classification: '📦',
 	},
 	{
 		key: 'woodCutter',
 		name: 'Woodcutter',
-		r: 20, cap: 6, cost: [W],
-		input: [], output: [W], rate: 2,
+		r: 20, cap: 6, cost: [Gr],
+		input: [Gr], output: [W], rate: 2,
 		classification: '🪚',
 	},
 	{
 		key: 'stoneMine',
 		name: 'Stone Mine',
-		r: 20, cap: 6, cost: [W],
-		input: [], output: [W], rate: 2,
+		r: 20, cap: 6, cost: [W, W, W, Gr],
+		input: [Gr], output: [S], rate: 2,
 		upgrades: ['oreMine'],
 		classification: '🪚',
 	},
 	{
 		key: 'oreMine',
 		name: 'Ore Mine',
-		r: 30, cap: 6, cost: [W],
-		input: [], output: [Or], rate: 2,
+		r: 30, cap: 6, cost: [W, S, Gr],
+		input: [W, Gr], output: [Or], rate: 2,
 		classification: '🪚',
 	},
 	{
@@ -136,7 +136,7 @@ const buildingTypesArr = [
 	{
 		key: 'fortress',
 		name: 'Fortress',
-		r: 24, cap: 4, cost: [S, S, S, S, W],
+		r: 24, cap: 4, cost: [S, S, S, W, Or],
 		defMax: 8,
 		classification: '🛡️',
 	},
@@ -151,14 +151,14 @@ const buildingTypesArr = [
 	{
 		key: 'riceFarm',
 		name: 'Rice farm',
-		r: 24, cap: 6, cost: [W],
+		r: 24, cap: 6, cost: [W, W, Or, Or],
 		input: [], output: [Ri], rate: 2,
 		classification: '🪚',
 	},
 	{
 		key: 'shrine',
 		name: 'Shrine',
-		r: 16, cap: 6, cost: [W],
+		r: 16, cap: 6, cost: [W, S, Or],
 		input: [Ri], output: [Ka], rate: 2,
 		upgrades: ['temple'],
 		classification: '🪷',
@@ -166,14 +166,14 @@ const buildingTypesArr = [
 	{
 		key: 'temple',
 		name: 'Temple',
-		r: 32, cap: 6, cost: [W],
+		r: 32, cap: 6, cost: [W, S, Or, Ri],
 		input: [Ri], output: [Ka, Ka], rate: 2,
 		classification: '🪷',
 	},
 	{ // noka
 		key: 'farmHouse',
 		name: 'Noka (farmhouse)',
-		r: 20, cap: 6, cost: [W],
+		r: 20, cap: 6, cost: [W, W, W],
 		input: [Gr], output: ['meeple'], rate: 10, // TODO: decrease rate
 		popMax: 4,
 		upgrades: ['urbanHouse'],
@@ -183,7 +183,7 @@ const buildingTypesArr = [
 	{ // machiya
 		key: 'urbanHouse',
 		name: 'Machiya (urban house)',
-		r: 30, cap: 6, cost: [W],
+		r: 30, cap: 6, cost: [W, W, Or, Ri, Ri],
 		input: [Ri], output: ['meeple'], rate: 1,
 		popMax: 8,
 		autoWork: true,
@@ -272,7 +272,7 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 		prodCool: 0,
 		prodHeat: 0,
 		on: true,
-		resources: [W, S, W, Gr],
+		inv: [],
 		refresh: false, // remove rendered element and recreate
 		// TODO: maintain links (roads) to other buildings so it is easy to find paths
 		...getRandomWorldLocation(),
@@ -388,27 +388,29 @@ function assignJobs(desiredJobCounts = {}) {
 
 /* ------------------------------ Upgrading ------------------ */
 
-function affordCost(b, cost) {
-	// TODO: look all over and see if we can afford
-}
-
-function payCost(b, cost) {
-	// TODO: affordCost check
-	// TODO: start at building and pay cost by consuming resources
-	return true;
+function payBuildingCost(bUpgrading, cost = []) {
+	const afford = canAffordAllResources(cost);
+	if (!afford) return F;
+	let leftToPay = [...cost];
+	leftToPay = consumeResources(bUpgrading, leftToPay);
+	// TODO: Loop through buildings based on connections or prioritizing stockpiles
+	loopBuildings((b) => {
+		leftToPay = consumeResources(b, leftToPay);
+	});
+	return T;
 }
 
 function upgradeBuilding(bKey, upTypeKey) {
 	const b = g.buildings[bKey];
 	const { upgrades = [] } = buildingTypes[b.type]
 	if (!upgrades.includes(upTypeKey)) throw new Error(`Unknown upTypeKey`);
-	const paid = payCost(b, buildingTypes[upTypeKey].cost);
+	const paid = payBuildingCost(b, buildingTypes[upTypeKey].cost);
 	if (!paid) {
-		console.warn('Could not afford');
+		window.alert('Cannot afford this upgrade yet.');
 		return;
 	}
 	b.type = upTypeKey;
-	b.refresh = true;
+	b.refresh = T;
 	resetProductionCooldown(b);
 	renderBuildings();
 }
@@ -557,7 +559,7 @@ function renderBuildings() {
 		if (!bEl) bEl = addBuildingSvg(b, layers.building);
 		bEl.classList.toggle('selectedb', (b.key === g.selectedBuildingKey));
 		setBuildingProgressSvg(b);
-		renderResources(b.resources, bEl.querySelector('.res-g'), bt.r);
+		renderResources(b.inv, bEl.querySelector('.res-g'), bt.r);
 	});
 }
 
@@ -621,7 +623,7 @@ function getBuildingInfoHtml(b) {
 		</div>`;
 	return `<div>
 			<div class="b-name">${type.classification} ${type.name || b.type}</div>
-			<div>📦 Resources: ${b.resources.join(', ')} (${b.resources.length} / max: ${type.cap})</div>
+			<div>📦 Resources: ${b.inv.join(', ')} (${b.inv.length} / max: ${type.cap})</div>
 			${isBuildingProducer(b) ? prod : ''}
 		</div>
 		<div>
@@ -649,6 +651,7 @@ function renderUi() {
 	classes.toggle('bselected', g.selectedBuildingKey);
 	classes.toggle('looping', g.looping);
 	classes.toggle('creating', g.creating);
+	classes.toggle('moving', g.moving);
 	classes.toggle('assigning', g.assigning);
 	classes.toggle('pop', g.meepleKeys.length > 0);
 	// Update countdown
@@ -668,7 +671,8 @@ function renderUi() {
 		let upgradesHtml = (upgrades)
 			? upgrades.map((key) => {
 				const { name = key, cost, classification } = buildingTypes[key];
-				return `<li class="up-action" data-upgrade="${key}" data-building="${g.selectedBuildingKey}">
+				const afford = canAffordAllResources(cost);
+				return `<li class="up-action ${(!afford) ? 'unaffordable' : 'affordable'}" data-upgrade="${key}" data-building="${g.selectedBuildingKey}">
 					<span class="up-name">${classification} ${name}</span>
 					<span class="up-cost">${cost}</span>
 				</li>`
@@ -691,6 +695,37 @@ function render() {
 }
 
 /* ------------------------------ Querying World ------------------ */
+
+function sumInv(inv) {
+	return inv.reduce((o, res) => ({ ...o, [res]: (o[res] || 0) + 1 }), {});
+}
+
+function getAllResourceCounts() {
+	const counts = {};
+	loopBuildings((b) => {
+		b.inv.forEach((res) => {
+			counts[res] = (counts[res] || 0) + 1;
+		});
+	});
+	return counts;
+}
+
+function getNeededAllResources(costArr = []) {
+	const all = getAllResourceCounts();
+	const cost = sumInv(costArr);
+	const need = {};
+	Object.keys(cost).forEach((res) => {
+		need[res] = cost[res] - (all[res] || 0);
+		if (need[res] < 0) need[res] = 0;
+	});
+	return need;
+}
+
+function canAffordAllResources(costArr = []) {
+	const need = getNeededAllResources(costArr);
+	const needSum = Object.keys(need).reduce((sum, res) => (sum + need[res]), 0);
+	return (needSum <= 0);
+}
 
 function filterBuildingKeys(fn) {
 	return g.buildingKeys.filter((key) => {
@@ -817,7 +852,7 @@ function countWorkers(b) {
 
 /** Does building have a list of resources? */
 function doesBuildingHave(b, arr = []) {
-	const leftOver = b.resources.reduce((left, res) => {
+	const leftOver = b.inv.reduce((left, res) => {
 		const i = left.indexOf(res);
 		if (i >= 0) left.splice(i, 1);
 		return left;
@@ -831,10 +866,10 @@ function getProdPercent(b) {
 }
 
 function getUnneededResources(b) {
-	if (!b.on) return [...b.resources]; // If off, then all is unneeded
+	if (!b.on) return [...b.inv]; // If off, then all is unneeded
 	const bt = buildingTypes[b.type];
 	const wanted = [...bt.input];
-	const unneeded = b.resources.reduce((left, res) => {
+	const unneeded = b.inv.reduce((left, res) => {
 		const i = wanted.indexOf(res);
 		if (i > 0) {
 			wanted.splice(i, 1);
@@ -856,31 +891,37 @@ function needsResource(b, res) {
 	const bt = buildingTypes[b.type];
 	const resSum = (sum, r) => sum + ((r === res) ? 1 : 0); // resource summation fn
 	const need = bt.input.reduce(resSum, 0);
-	const has = b.resources.reduce(resSum, 0);
+	const has = b.inv.reduce(resSum, 0);
 	return (need > has);
 }
 
 function isFull(b) {
-	return (b.resources.length >= buildingTypes[b.type].cap);
+	return (b.inv.length >= buildingTypes[b.type].cap);
+}
+
+/** Remove resources from arr from inventory and return what's left to remove */
+function removeInvResources(inv, arr = []) {
+	if (!arr.length) return [];
+	const left = [...arr]; // What's left to remove
+	// Loop over resources backwards because we'll be removing items, altering indices
+	for (let w = inv.length; w--; w >= 0) {
+		const res = inv[w];
+		const i = left.indexOf(res); // If this one that's left to remove
+		if (i >= 0) {
+			left.splice(i, 1);
+			inv.splice(w, 1);
+		}
+	}
+	return left;
 }
 
 /* ------------------------------ Looping ------------------ */
 
-/** Removes a list of resources from a building - all or nothing */
-function consumeResources(b, arr = []) {
-	if (!arr.length) return true;
-	if (!doesBuildingHave(b, arr)) return false;
-	const left = [...arr]; // What's left to remove
-	// Loop over resources backwards because we'll be removing items, altering indices
-	for (let w = b.resources.length; w--; w >= 0) {
-		const res = b.resources[w];
-		const i = left.indexOf(res); // If this one that's left to remove
-		if (i >= 0) {
-			left.splice(i, 1);
-			b.resources.splice(w, 1);
-		}
-	}
-	return (left.length === 0);
+/** Removes a list of resources from a building - all or nothing. Returns what's left to consume. */
+function consumeResources(b, arr = [], allOrNothing = F) {
+	if (!arr.length) return [];
+	if (allOrNothing && !doesBuildingHave(b, arr)) return [...arr];
+	return removeInvResources(b.inv, arr);
 }
 
 /** Make resources and add to a building  */
@@ -901,7 +942,7 @@ function createResources(b, arr = []) {
 		return T;
 	}
 	if (isFull(b)) return F;
-	b.resources = b.resources.concat([...arr]);
+	b.inv = b.inv.concat([...arr]);
 	return T;
 }
 
@@ -921,8 +962,8 @@ function produce(b, delta) {
 	b.prodCool = 0;
 	// Do we have input in inventory?
 	// if (!doesBuildingHave(b, type.input)) return;
-	const didConsumeAll = consumeResources(b, type.input);
-	if (!didConsumeAll) return;
+	const left = consumeResources(b, type.input, T);
+	if (left.length > 0) return; // Did not consume all?
 	const didCreate = createResources(b, type.output);
 	if (!didCreate) {
 		// If the creation failed then re-add the resources that were taken
@@ -938,7 +979,7 @@ function dropResource(m, b) {
 	if (!isOnBuilding(m, b)) return F;
 	const res = m.inv.shift(); // Take from top because we check index 0 when determining where to drop
 	// TODO LATER: Worry about overflowing the destination building
-	b.resources.push(res);
+	b.inv.push(res);
 	return T;
 }
 
@@ -950,8 +991,8 @@ function pickUpResource(m, b, resParam /* optional */) {
 	if (!unneeded.length) return F;
 	// If resParam and is in arr, then use that, otherwise pick random res from arr
 	const res = (resParam && unneeded.includes(resParam)) ? resParam : randPick(unneeded);
-	const consumed = consumeResources(b, [res]);
-	if (!consumed) return F;
+	const left = consumeResources(b, [res], T);
+	if (left.length > 0) return F;
 	m.inv.push(res);
 	return T;
 }
@@ -1150,8 +1191,8 @@ function tapWorld(e) {
 		binfo = selectBuilding(b);
 	} else if (g.creating && g.selectedBuildingKey) {
 		g.creating = false;
-		const { clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY } = e;
-		console.log({ clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY });
+		// const { clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY } = e;
+		// console.log({ clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY });
 		const b = addBuilding({ x: e.offsetX, y: e.offsetY, type: 'connector' }, g.selectedBuildingKey);
 		binfo = selectBuilding(b);
 	} else {
@@ -1252,11 +1293,13 @@ function setupEvents(w) {
 	*/
 	// The native draggable capabilities did not work on mobile, so we're trying the following
 	// which uses "pointer" events.
-	let pickupEvent = null;
+	let pickupEvent;
 	const pickupWorldCoords = { x: w.x, y: w.y };
 	on(el, 'pointerup', (e) => {
 		// console.log('world pointerup');
-		pickupEvent = null;
+		pickupEvent = N;
+		g.moving = F;
+		render();
 	});
 	on(el, 'pointermove', (e) => {
 		if (pickupEvent) {
@@ -1268,6 +1311,7 @@ function setupEvents(w) {
 	});
 	on(el, 'pointerdown', (e) => {
 		tapWorld(e);
+		g.moving = T;
 		pickupEvent = e;
 		pickupWorldCoords.x = w.x;
 		pickupWorldCoords.y = w.y;
@@ -1277,8 +1321,8 @@ function setupEvents(w) {
 		render();
 		console.log(e.deltaY);
 	});
-	on($id('bui'), 'pointerdown', tapBottomUi);
-	on($id('tui'), 'pointerdown', tapTopUi);
+	on($('#bui'), 'pointerdown', tapBottomUi);
+	on($('#tui'), 'pointerdown', tapTopUi);
 	// Job assignment UI
 	loopJobs((job, input) => {
 		on(input, 'change', (e) => {
@@ -1316,9 +1360,9 @@ function start() {
 	};
 	setupDom();
 	setupEvents(g.world);
-	const b = addBuilding({ type: 'connector' });
+	const b = addBuilding({ type: 'outpost' });
+	b.inv = [W, W, Gr];
 	addBuilding({ type: 'connector' }, b.key);
-	addMeeple();
 	addMeeple();
 	addMeeple();
 	render();
@@ -1342,15 +1386,11 @@ const g = window.g = {
 	karma: 0,
 	countdown: 300000, // 5 minutes * 60 seconds/min * 1000 ms/sec
 	looping: F,
+	moving: F,
 	creating: F,
 	assigning: F,
 	zoom: 1,
 	start,
 	// test
-	getUnneededResources,
-	hasUnneededResources,
-	needsResource,
-	dropResource,
-	pickUpResource,
 };
 document.addEventListener('DOMContentLoaded', g.start);
