@@ -86,8 +86,8 @@ const buildingTypesArr = [
 	{
 		key: 'outpost',
 		name: 'Outpost',
-		r: 20, cap: 19, cost: [W, W, S, S],
-		defMax: 2, popMax: 10,
+		r: 20, cap: 6, cost: [W, W, S, S],
+		defMax: 1, popMax: 2,
 		classification: '🚩'
 	},
 	{
@@ -642,7 +642,7 @@ function renderBuildingInfo(b) {
 }
 
 function renderMeepleCounts() {
-	const html = `${g.meepleKeys.length} / max: ${getPopMax()} (Defenders max: ${getDefenderMax()})`;
+	const html = `${g.meepleKeys.length} / max: ${getPopMax()}, Defenders max: ${getDefenderMax()}`;
 	setHtml('#mcounts', html);
 }
 
@@ -668,7 +668,7 @@ function renderUi() {
 		const b = g.buildings[g.selectedBuildingKey];
 		renderBuildingInfo(b);
 		const { upgrades } = buildingTypes[b.type];
-		let upgradesHtml = (upgrades)
+		let upgradesHtml = (upgrades.length)
 			? upgrades.map((key) => {
 				const { name = key, cost, classification } = buildingTypes[key];
 				const afford = canAffordAllResources(cost);
@@ -1203,6 +1203,7 @@ function tapWorld(e) {
 			binfo = 'road';
 		}
 	}
+	e.preventDefault();
 	setHtml('#binfo', binfo);
 	render();
 }
@@ -1355,14 +1356,16 @@ function start() {
 			resource: $('#layer-resource'),
 			meeple: $('#layer-meeple'),
 		},
-		x: 0,
+		x: window.innerWidth - size,
 		y: 0,
 	};
 	setupDom();
 	setupEvents(g.world);
-	const b = addBuilding({ type: 'outpost' });
-	b.inv = [W, W, Gr];
-	addBuilding({ type: 'connector' }, b.key);
+	const x = size - 40;
+	const y = size / 2;
+	const b = addBuilding({ type: 'outpost', x, y });
+	b.inv = [W, W];
+	addBuilding({ type: 'connector', x: x - (100 + randInt(size/3)), y: y + randInt(200) - randInt(200) }, b.key);
 	addMeeple();
 	addMeeple();
 	render();
