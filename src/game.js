@@ -12,14 +12,19 @@ const T = true;
 const F = false;
 const N = null;
 // Speed in pixels per millisecond
-const MEEP_SPEED = 140 * (1/1000); // pixels per second * s/ms
-const IDLE_SPEED = MEEP_SPEED / 2;
+const MEEP_SPEED = 120 * (1/1000); // pixels per second * s/ms
+const PROD_SPEED = MEEP_SPEED;
+const CARR_SPEED = MEEP_SPEED * 1.1;
+const ENCUMBER = 0.6; // multipler to speed
+const IDLE_SPEED = MEEP_SPEED * 0.25;
 const WORK_SPEED = MEEP_SPEED * 0.75;
 const MAX_PATH_LOOK = 20;
 const MAX_WORKERS = 6;
-const WIND_KARMA = 3000;
+const WIND_KARMA = 300;
 const KARMA_PER_RESOURCE = 1;
 const MEEPLE_SIZE = 7;
+const BASE_DEF = 0.5;
+const DEF_DEF = 0.9;
 
 const $ = (q) => document.querySelector(q);
 const $id = (id) => document.getElementById(id);
@@ -93,28 +98,35 @@ const buildingTypesArr = [
 	{
 		key: 'connector',
 		name: 'Crossroad',
-		r: 10, cap: 4, cost: [],
+		r: 10, cap: 3, cost: [],
 		upgrades: ['stoneMine', 'grainFarm', 'tower', 'shrine', 'farmHouse', 'woodCutter', 'stockpile'],
 		classification: '🪧'
 	},
 	{
 		key: 'stockpile',
 		name: 'Stockpile',
-		r: 40, cap: 20, cost: [S, W, Gr],
+		r: 30, cap: 20, cost: [S, W, Gr],
+		upgrades: ['warehouse'],
+		classification: '📦',
+	},
+	{
+		key: 'warehouse',
+		name: 'Warehouse',
+		r: 42, cap: 40, cost: [S, S],
 		classification: '📦',
 	},
 	{
 		key: 'woodCutter',
 		name: 'Woodcutter',
 		r: 20, cap: 6, cost: [Gr],
-		input: [Gr], output: [W], rate: 2,
+		input: [Gr], output: [W], rate: 4,
 		classification: '🪚',
 	},
 	{
 		key: 'stoneMine',
 		name: 'Stone Mine',
 		r: 20, cap: 6, cost: [W, W, W, Gr],
-		input: [Gr], output: [S], rate: 2,
+		input: [Gr], output: [S], rate: 1.5,
 		upgrades: ['oreMine'],
 		classification: '🪚',
 	},
@@ -122,7 +134,7 @@ const buildingTypesArr = [
 		key: 'oreMine',
 		name: 'Ore Mine',
 		r: 30, cap: 6, cost: [W, S, Gr],
-		input: [W, Gr], output: [Or], rate: 2,
+		input: [W, Gr], output: [Or], rate: 1,
 		classification: '🪚',
 	},
 	{
@@ -144,7 +156,7 @@ const buildingTypesArr = [
 		key: 'grainFarm',
 		name: 'Grain farm',
 		r: 20, cap: 10, cost: [W, W],
-		input: [], output: [Gr], rate: 2,
+		input: [], output: [Gr], rate: 3,
 		upgrades: ['riceFarm'],
 		classification: '🪚',
 	},
@@ -152,30 +164,30 @@ const buildingTypesArr = [
 		key: 'riceFarm',
 		name: 'Rice farm',
 		r: 24, cap: 6, cost: [W, W, Or, Or],
-		input: [], output: [Ri], rate: 2,
+		input: [], output: [Ri], rate: 4,
 		classification: '🪚',
 	},
 	{
 		key: 'shrine',
 		name: 'Shrine',
 		r: 16, cap: 6, cost: [W, S, Or],
-		input: [Ri], output: [Ka], rate: 2,
+		input: [Ri], output: [Ka], rate: 3,
 		upgrades: ['temple'],
 		classification: '🪷',
 	},
 	{
 		key: 'temple',
 		name: 'Temple',
-		r: 32, cap: 6, cost: [W, S, Or, Ri],
-		input: [Ri], output: [Ka, Ka], rate: 2,
+		r: 32, cap: 6, cost: [S, Or, Or, Ri],
+		input: [Ri], output: [Ka, Ka], rate: 4,
 		classification: '🪷',
 	},
 	{ // noka
 		key: 'farmHouse',
 		name: 'Noka (farmhouse)',
-		r: 20, cap: 6, cost: [W, W, W],
-		input: [Gr], output: ['meeple'], rate: 10, // TODO: decrease rate
-		popMax: 4,
+		r: 20, cap: 2, cost: [W, W, W],
+		input: [Gr], output: ['meeple'], rate: 1,
+		popMax: 3,
 		upgrades: ['urbanHouse'],
 		autoWork: T,
 		classification: '🛖',
@@ -183,7 +195,7 @@ const buildingTypesArr = [
 	{ // machiya
 		key: 'urbanHouse',
 		name: 'Machiya (urban house)',
-		r: 30, cap: 6, cost: [W, W, Or, Ri, Ri],
+		r: 30, cap: 4, cost: [W, W, Or, Ri, Ri],
 		input: [Ri], output: ['meeple'], rate: 1,
 		popMax: 8,
 		autoWork: true,
@@ -269,6 +281,7 @@ function addBuilding(bParam = {}, fromBuildingKey = N) {
 		type: 'connector',
 		// x: 0,
 		// y: 0,
+		supplied: F,
 		prodCool: 0,
 		prodHeat: 0,
 		on: true,
@@ -298,6 +311,7 @@ function addMeeple(mParam = {}) {
 		key: getRandomKey('M'),
 		job: 'idle',
 		hp: 100,
+		defense: BASE_DEF,
 		carry: N,
 		weapon: N,
 		buildingKey: N, // goal
@@ -406,7 +420,7 @@ function upgradeBuilding(bKey, upTypeKey) {
 	if (!upgrades.includes(upTypeKey)) throw new Error(`Unknown upTypeKey`);
 	const paid = payBuildingCost(b, buildingTypes[upTypeKey].cost);
 	if (!paid) {
-		window.alert('Cannot afford this upgrade yet.');
+		// window.alert('Cannot afford this upgrade yet.');
 		return;
 	}
 	b.type = upTypeKey;
@@ -610,21 +624,25 @@ function renderJobAssignment() {
 
 function getBuildingInfoHtml(b) {
 	if (!b) return '';
-	const type = buildingTypes[b.type];
-	// const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${type.upgrades.length})</b></button>`;
-	// ${type.upgrades.length ? upgradeButton : ''}
+	const bt = buildingTypes[b.type];
+	// const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${bt.upgrades.length})</b></button>`;
+	// ${bt.upgrades.length ? upgradeButton : ''}
 	const toggleButtons = `<button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
 		<button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>`;
 	const prod = `<div>🪚 Production:
-			${(type.input.length) ? type.input.join(', ') : '(No input)'}
-			➡️ ${(type.output.length) ? type.output.join(', ') : '(No output)'}
-			<span>(${type.rate}/min)</span>
+			<span class="prodin ${b.supplied ? 'supplied' : 'missing'}">
+				${(bt.input.length) ? bt.input.join(', ') : '(No input)'}
+			</span>
+			➡️ ${(bt.output.length) ? bt.output.join(', ') : '(No output)'}
+			<span>(${bt.rate}/min)</span>
 			<span id="b-progress">%</span>
 		</div>`;
 	return `<div>
-			<div class="b-name">${type.classification} ${type.name || b.type}</div>
-			<div>📦 Resources: ${b.inv.join(', ')} (${b.inv.length} / max: ${type.cap})</div>
+			<div class="b-name">${bt.classification} ${bt.name || b.type}</div>
+			<div>📦 Resources: ${b.inv.join(', ')} (${b.inv.length} / max: ${bt.cap})</div>
 			${isBuildingProducer(b) ? prod : ''}
+			${bt.popMax ? `<div>+${bt.popMax} max citizens</div>` : ''}
+			${bt.defMax ? `<div>+${bt.defMax} max defenders</div>` : ''}
 		</div>
 		<div>
 			${toggleButtons}
@@ -660,8 +678,8 @@ function renderUi() {
 	const mins = Math.floor(cd * (1/1000) * (1/60));
 	cd -= (mins * 1000 * 60);
 	const sec = Math.floor(cd * (1/1000));
-	setHtml(g.countdownEl, `⚔️ ${mins}:${sec < 10 ? '0' : ''}${sec}`);
-	setHtml('#karma', `🪷 Karma: ${g.karma} /${WIND_KARMA}`);
+	setHtml(g.countdownEl, `${g.peace ? '☮️' : '⚔️'} ${mins}:${sec < 10 ? '0' : ''}${sec}`);
+	setHtml('#karma', (g.karma) ? `🪷 Karma: ${g.karma} /${WIND_KARMA}` : '');
 	$('#kamikaze').style.display = (g.karma >= WIND_KARMA) ? 'block' : 'none';
 	// List
 	if (g.selectedBuildingKey) {
@@ -948,7 +966,16 @@ function createResources(b, arr = []) {
 
 function produce(b, delta) {
 	const type = buildingTypes[b.type];
-	if (!type.output && !type.input) return;
+	if ((!type.output && !type.input) || !b.on) return; // Doesn't produce or not on
+	if (!type.input.length) b.supplied = T; // always supplied if no inputs
+	if (!b.supplied) {
+		// Do we have input in inventory?
+		// if (!doesBuildingHave(b, type.input)) return;
+		const left = consumeResources(b, type.input, T);
+		if (left.length > 0) return; // Did not consume all? Probably doesn't have it yet
+		b.supplied = T;
+		return;
+	}
 	const workers = Math.min(countWorkers(b), MAX_WORKERS);
 	// Reduce cooldown by delta
 	// Adjust delta based on who's working at building
@@ -960,16 +987,12 @@ function produce(b, delta) {
 	if (b.prodCool > 0) return; // Still producing
 	// Production is done
 	b.prodCool = 0;
-	// Do we have input in inventory?
-	// if (!doesBuildingHave(b, type.input)) return;
-	const left = consumeResources(b, type.input, T);
-	if (left.length > 0) return; // Did not consume all?
 	const didCreate = createResources(b, type.output);
 	if (!didCreate) {
-		// If the creation failed then re-add the resources that were taken
-		createResources(b, type.input);
+		// If the creation failed then bail out and keep trying
 		return;
 	}
+	b.supplied = F;
 	resetProductionCooldown(b, b.prodCool);
 }
 
@@ -1060,7 +1083,7 @@ function simProd(m, delta) {
 		return;
 	}
 	// Move towards first spot of the path
-	moveTo(m, m.path[0], delta, IDLE_SPEED);
+	moveTo(m, m.path[0], delta, PROD_SPEED);
 }
 
 function simCarrier(m, delta) {
@@ -1097,14 +1120,17 @@ function simCarrier(m, delta) {
 		setPathTo(m, bKeys);
 		return;
 	}
+	const speed = CARR_SPEED * (m.inv.length ? ENCUMBER : 1);
 	// Move towards first spot of the path
-	moveTo(m, m.path[0], delta, IDLE_SPEED);
+	moveTo(m, m.path[0], delta, speed);
 }
 
 function simDefend(m, delta) {
 	checkArrivalTrimPath(m);
 	// TODO: If near enemy then handle combat
 	if (!m.path.length) {
+		// TODO: If on a defense place then increase defense score
+		m.defense = Math.min(m.defense + 0.05, DEF_DEF);
 		// TODO: If combat, then move toward enemy
 		// Patrol between defense
 		const defBKeys = filterBuildingKeys((b, bt) => (bt.classification === '🛡️'));
@@ -1112,7 +1138,7 @@ function simDefend(m, delta) {
 		return;
 	}
 	// Move towards first spot of the path
-	moveTo(m, m.path[0], delta, IDLE_SPEED);
+	moveTo(m, m.path[0], delta, MEEP_SPEED);
 }
 
 function simSpirit(m, delta) {
@@ -1127,7 +1153,11 @@ function simSpirit(m, delta) {
 		return;
 	}
 	// Move towards first spot of the path
-	moveTo(m, m.path[0], delta, IDLE_SPEED);
+	moveTo(m, m.path[0], delta, MEEP_SPEED);
+}
+
+function simInvader(m, delta) {
+	// TODO: Enemies and combat
 }
 
 function simulate(delta) { // Do updating of world
@@ -1146,7 +1176,13 @@ function simulate(delta) { // Do updating of world
 		const b = g.buildings[k];
 		produce(b, delta);
 	});
-	// TODO: Enemies and combat
+	g.invaderKeys.forEach((key) => {
+		simInvader(g.invaders[key], delta);
+	});
+}
+
+function invade(n) {
+	// TODO: spawn invaders
 }
 
 function loop() {
@@ -1154,7 +1190,12 @@ function loop() {
 	const now = Number(new Date());
 	const delta = (g.lastTime) ? now - g.lastTime : 0;
 	g.lastTime = now;
-	g.countdown -= delta;
+	if (!g.peace) {
+		g.countdown -= delta;
+		if (g.countdown <= 0) {
+			invade(g.meeples.length - 1);
+		}
+	}
 	simulate(delta);
 	render();
 	setTimeout(loop, 100);
@@ -1175,36 +1216,30 @@ function stopLoop() {
 
 function selectBuilding(b) {
 	g.selectedBuildingKey = b.key;
-	return getBuildingInfoHtml(b);
 }
 
 function tapWorld(e) {
 	const t = e.target;
 	const classes = t.classList;
-	let binfo = '';
 	if (classes.contains('building')) {
 		const b = g.buildings[t.closest('g').id];
 		if (g.creating && g.selectedBuildingKey) {
 			addRoad(b.key, g.selectedBuildingKey);
 			g.creating = false;
 		}
-		binfo = selectBuilding(b);
+		selectBuilding(b);
 	} else if (g.creating && g.selectedBuildingKey) {
 		g.creating = false;
 		// const { clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY } = e;
 		// console.log({ clientX, clientY, layerX, layerY, offsetX, offsetY, pageX, pageY, screenX, screenY });
 		const b = addBuilding({ x: e.offsetX, y: e.offsetY, type: 'connector' }, g.selectedBuildingKey);
-		binfo = selectBuilding(b);
+		selectBuilding(b);
 	} else {
 		g.selectedBuildingKey = N;
 		g.upgradesOpen = F;
 		g.assigning = F;
-		if (classes.contains('road')) {
-			binfo = 'road';
-		}
 	}
 	e.preventDefault();
-	setHtml('#binfo', binfo);
 	render();
 }
 
@@ -1230,10 +1265,15 @@ function tapTopUi(e) {
 		// '#b-up-toggle': () => g.upgradesOpen = !g.upgradesOpen,
 		'#kamikaze': () => {
 			stopLoop();
-			// TODO: Remove karma
-			// TODO: Reset time
-			// TODO: If done twice switch to peace mode
+			if (g.karma < WIND_KARMA) return;
+			g.karma -= WIND_KARMA;
+			g.countdown = 300000;
+			g.kamikazes += 1;
 			window.alert('A divine wind washes away the invading fleet!');
+			if (g.kamikazes >= 2) {
+				g.peace = T;
+				window.alert('You win');
+			}
 		},
 	});
 }
@@ -1317,11 +1357,15 @@ function setupEvents(w) {
 		pickupWorldCoords.x = w.x;
 		pickupWorldCoords.y = w.y;
 	});
+	// TODO: Fix construction so it takes into account the zoom level, 
+	// then re-enable zoom
+	/*
 	on($('body'), 'wheel', (e) => {
 		g.zoom = Math.min(Math.max(g.zoom + (e.deltaY * -0.001), 0.1), 3);
 		render();
 		console.log(e.deltaY);
 	});
+	*/
 	on($('#bui'), 'pointerdown', tapBottomUi);
 	on($('#tui'), 'pointerdown', tapTopUi);
 	// Job assignment UI
@@ -1368,6 +1412,7 @@ function start() {
 	addBuilding({ type: 'connector', x: x - (100 + randInt(size/3)), y: y + randInt(200) - randInt(200) }, b.key);
 	addMeeple();
 	addMeeple();
+	addMeeple();
 	render();
 }
 
@@ -1385,9 +1430,11 @@ const g = window.g = {
 	selectedBuildingKey: N,
 	upgradesOpen: F,
 	countdownEl: N,
+	peace: F,
+	kamikazes: 0,
 	lastTime: 0,
 	karma: 0,
-	countdown: 300000, // 5 minutes * 60 seconds/min * 1000 ms/sec
+	countdown: 600000, // 10 minutes * 60 seconds/min * 1000 ms/sec
 	looping: F,
 	moving: F,
 	creating: F,

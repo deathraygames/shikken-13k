@@ -115,10 +115,9 @@ button[disabled] {
 	box-shadow: none;
 }
 button, #blist {
-	transition: all ease-in-out 0.1s;
+	transition: all ease-in-out 0.15s;
 }
 #binfo {
-	
 	display: flex;
 	justify-content: space-between;
 }
@@ -155,20 +154,27 @@ button, #blist {
 .bselected #blist,
 .pop #jobs,
 .assigning #jass,
-.creating #createhelp {
+.creating #createhelp,
+.bselected #binfo {
+	transition: all ease-in-out 0.2s;
 	transform: scale(1);
 	max-height: 100vh;
 	max-width: 100vw;
+	opacity: 1;
 }
+#binfo,
 #pause, #build, #cancel, #blist, #jobs, #jass, #createhelp, #upgra,
 .looping #play,
 .creating #build,
 .creating #blist,
 .creating #upgra,
 .pop #restart {
-	transform: scale(0);
+	transition: all ease-in-out 0.2s;
+	transform: scale(0.5);
 	max-height: 0;
-	max-width: 0;
+	/* max-width: 0; */
+	opacity: 0;
+	overflow: hidden;
 }
 
 /* Jobs assignment */
@@ -225,7 +231,8 @@ button, #blist {
 	opacity: 0.5;
 	background: rgba(0,0,0,0.2);
 }
-.unaffordable .up-cost {
+.unaffordable .up-cost,
+.missing {
 	color: #b03a48;
 }
 
@@ -244,7 +251,7 @@ button, #blist {
 	stroke-width: 3px;
 }
 .mj-idle {
-	fill: #777;
+	fill: #999;
 }
 .mj-prod {
 	fill: #3e6958;
@@ -253,16 +260,16 @@ button, #blist {
 	fill: #e0c872;
 }
 .mj-defe {
-	fill: #d4804d;
+	fill: #243d5c;
 }
 .mj-spir {
-	fill: #5c8b93;
+	fill: #d4804d;
 }
 
 .building, .building-connector {
 	fill: #fff;
-	stroke: #555;
-	stroke-width: 2px;
+	stroke: rgba(0, 0, 0, 0.4);
+	stroke-width: 3px;
 	cursor: pointer;
 }
 .building:hover {
@@ -285,46 +292,48 @@ button, #blist {
 }
 
 .b-outpost {
-	fill: #fff;
+	fill: #e3cfb4;
 }
 .b-connector {
-	fill: #fff;
+	fill: #e3cfb4;
+	stroke: #b99;
 }
-.b-stockpile {
-	fill: #fff;
+.b-stockpile,
+.b-warehouse {
+	fill: #e3cfb4;
 }
 .b-woodCutter {
-	fill: #9b9;
+	fill: #5b7d73;
 }
 .b-stoneMine {
-	fill: #663;
+	fill: #624c3c;
 }
 .b-oreMine {
-	fill: #b83;
+	fill: #8c7c79;
 }
 .b-tower {
-	fill: #b99;
+	fill: #5d7275;
 }
 .b-fortress {
-	fill: #a55;
+	fill: #5d7275;
 }
 .b-grainFarm {
-	fill: #7a7;
+	fill: #8e9f7d;
 }
 .b-riceFarm {
-	fill: #6c6;
+	fill: #aaa25d;
 }
 .b-shrine {
-	fill: #4df;
+	fill: #d9ac8b;
 }
 .b-temple {
-	fill: #09f;
+	fill: #d9ac8b;
 }
 .b-farmHouse {
-	fill: #cca;
+	fill: #b1a58d;
 }
 .b-urbanHouse {
-	fill: #bb9;
+	fill: #ddcf99;
 }
 .res {
 	stroke: #000;
@@ -332,9 +341,17 @@ button, #blist {
 	fill: #5cc;
 	pointer-events: none;
 }
-/* https://lospec.com/palette-list/japanese-woodblock */
-.res-grain { fill: #b1a58d; stroke: #e0c872;  }
-.res-rice { fill: #e3cfb4; stroke: #b1a58d; }
-.res-stone { fill: #5d7275; stroke: #2b2821; }
-.res-wood { fill: #624c3c; stroke: #2b2821; }
-.res-ore { fill: #243d5c; stroke: #b1a58d; }
+/* https://lospec.com/palette-list/japanese-woodblock 
+https://lospec.com/palette-list/fading-16
+*/
+.res-grain { fill: #cca87b; stroke: #fff;  }
+.res-rice { fill: #ddcf99; stroke: #fff; }
+.res-stone { fill: #8c7c79; stroke: #a99c8d; }
+.res-wood { fill: #846d59; stroke: #a88a5e; }
+.res-ore { fill: #645355; stroke: #a99c8d; }
+
+.selectedb .building,
+.selectedb .building:hover {
+	stroke: #0ff;
+	stroke-width: 6px;
+}
