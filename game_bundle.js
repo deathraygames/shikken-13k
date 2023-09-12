@@ -144,6 +144,8 @@
         { return `(${(this.x<0?'':' ') + this.x.toFixed(digits)},${(this.y<0?'':' ') + this.y.toFixed(digits)} )`; }
     }
 
+    // import { ZZFX } from '../node_modules/zzfx/ZzFX.js';
+
     // const WORLD_SIZE = 2000;
     // Resources
     const Gr = 'grain',
@@ -179,7 +181,7 @@
     const MELEE_DIST = MEEPLE_SIZE * 1.5; // want to allow a little overlap
     const DMG = 20;
     const HP = 100;
-    const HEAL = 5 / 1000; // 5 per 1000 ms
+    const HEAL = 5 / 1000; // 1 per 1000 ms
 
     const $ = (q) => document.querySelector(q);
     const $id = (id) => document.getElementById(id);
@@ -190,9 +192,18 @@
     	p.appendChild(el);
     	return el;
     };
-    const setAttributes = (el, o) => Object.keys(o).forEach((k) => el.setAttribute(k, o[k]));
+    const setAttr = (el, o) => {
+    	Object.keys(o).forEach((k) => {
+    		el.setAttribute(k, o[k]);
+    	});
+    };
+    const setInputAttr = (el, propName, val) => {
+    	el.setAttribute(propName, val);
+    	el[propName] = val;
+    };
     const setHtml = (sel, html) => {
     	const el = (typeof sel === 'object') ? sel : $(sel);
+    	if (!el) throw new Error(`Cannot find element ${sel}`);
     	// if (sel === '#binfo') console.log(el.innerHTML, el.innerHTML.length, '\n...compare to...\n', html, html.length);
     	if (el.innerHTML === html) return false;
     	el.innerHTML = html;
@@ -212,13 +223,13 @@
     const atPoint = (v1, v2, within = 2) => (vec2(v1).distance(v2) <= within);
     const setVec = (o, v) => { o.x = v.x; o.y = v.y; return o; };
 
-    const resourceTypes = {
+    const resourceTypes = Object.freeze({
     	grain: { shape: 'polygon', sides: 3, r: 6, offsetAngle: (1/6) * TWO_PI },
     	rice: { shape: 'polygon', sides: 5, r: 6 },
     	wood: { shape: 'polygon', sides: 4, r: 6, offsetAngle: (1/8) * TWO_PI },
     	stone: { shape: 'polygon', sides: 4, r: 6 },
     	ore: { shape: 'polygon', sides: 3, r: 6 },
-    };
+    });
     const JOBS = [
     	{ key: 'idle', name: 'Wanderer', altName: 'Idle', classification: '💤' },
     	{ key: 'prod', name: 'Farmer/Artisan', altName: 'Production', classification: '🪚' },
@@ -296,7 +307,7 @@
     		key: 'tower',
     		name: 'Watchtower',
     		r: BUILDING_BASE_SIZE + 4, cap: 2, cost: [S, W, W],
-    		defMax: 5,
+    		defMax: 3,
     		upgrades: ['fortress'],
     		classification: '🛡️',
     	},
@@ -304,13 +315,13 @@
     		key: 'fortress',
     		name: 'Fortress',
     		r: BUILDING_BASE_SIZE + 14, cap: 4, cost: [S, S, S, W, Or],
-    		defMax: 8,
+    		defMax: 6,
     		classification: '🛡️',
     	},
     	{
     		key: 'grainFarm',
     		name: 'Grain farm',
-    		r: BUILDING_BASE_SIZE + 10, cap: 10, cost: [W, W],
+    		r: BUILDING_BASE_SIZE + 10, cap: 8, cost: [W, W],
     		input: [], output: [Gr], rate: 3,
     		upgrades: ['riceFarm'],
     		classification: '🪚',
@@ -428,6 +439,7 @@
     		60000 // 60000 ms per 1 minute
     		* (1 / rate) // rate = # of things created in 1 minute
     	) + extraNum;
+    	if (g.godMode) b.prodHeat = 1;
     	b.prodCool = b.prodHeat;
     }
 
@@ -500,7 +512,7 @@
     		job: 'kill',
     		faction: 'mongol',
     		hp: HP,
-    		defense: 0,
+    		defense: 0.2,
     		x: 0,
     		...mParam,
     	}, g.invaderKeys);
@@ -574,7 +586,7 @@
     	JOB_KEYS.forEach((job) => {
     		if (job === 'idle') return;
     	});
-    	console.log('Meeples assigned jobs:', g.meeples, 'desired:', desiredJobCounts, 'final:', currJobCounts);
+    	// console.log('Meeples assigned jobs:', g.meeples, 'desired:', desiredJobCounts, 'final:', currJobCounts);
     }
 
     /* ------------------------------ Upgrading ------------------ */
@@ -587,6 +599,9 @@
     	// TODO: Loop through buildings based on connections or prioritizing stockpiles
     	loopBuildings((b) => {
     		leftToPay = consumeResources(b, leftToPay);
+    	});
+    	loopCitizens((m) => {
+    		leftToPay = consumeResources(m, leftToPay);
     	});
     	return T;
     }
@@ -614,10 +629,11 @@
     }
 
     function setCirclePercent(circleSvgEl, r, percent = 0) {
+    	if (!circleSvgEl) throw new Error('No circle element');
     	const circumference = r * (2 * Math.PI);
     	const circPercent = percent * circumference;
     	const dashArray = [circPercent, circumference - circPercent];
-    	setAttributes(circleSvgEl, {
+    	setAttr(circleSvgEl, {
     		r,
     		// stroke: 'tomato',
     		'stroke-width': '10',
@@ -639,25 +655,25 @@
     	const type = buildingTypes[b.type];
     	const group = createAppendSvg('g', layer);
     	// group.id = b.key;
-    	setAttributes(group, {
+    	setAttr(group, {
     		id: b.key,
     		style: `transform: ${translateStyle(b)}`,
     	});
     	const prodCircle = createAppendSvg('circle', group);
-    	setAttributes(prodCircle, {
+    	setAttr(prodCircle, {
     		// r: type.r + 4,
-    		class: `b-prod-circle b-prod-${b.type}`,
+    		'class': `b-prod-circle b-prod-${b.type}`,
     	});
     	setBuildingProgressSvg(b);
     	const circle = createAppendSvg('circle', group);
-    	setAttributes(circle, {
+    	setAttr(circle, {
     		// cx: b.x,
     		// cy: b.y,
     		r: type.r,
-    		class: `building b-${b.type}`,
+    		'class': `building b-${b.type}`,
     	});
     	const resourceGroup = createAppendSvg('g', group);
-    	setAttributes(resourceGroup, { class: 'b-res-g res-g' });
+    	setAttr(resourceGroup, { 'class': 'b-res-g res-g' });
     	return group;
     }
 
@@ -666,33 +682,33 @@
     	line.id = r.key;
     	const from = g.buildings[r.from];
     	const to = g.buildings[r.to];
-    	setAttributes(line, {
+    	setAttr(line, {
     		x1: from.x,
     		y1: from.y,
     		x2: to.x,
     		y2: to.y,
-    		class: 'road',
+    		'class': 'road',
     	});
     	return line;
     }
 
     function addMeepleSvg(m, layer) {
     	const group = createAppendSvg('g', layer);
-    	setAttributes(group, {
+    	setAttr(group, {
     		id: m.key,
     		style: `transform: ${translateStyle(m)}`,
-    		class: 'meeple-g',
+    		'class': 'meeple-g',
     	});
     	const circle = createAppendSvg('circle', group);
     	// circle.id = m.key;
-    	setAttributes(circle, {
+    	setAttr(circle, {
     		// cx: 0, // m.x,
     		// cy: 0, // m.y,
     		r: MEEPLE_SIZE,
-    		class: `meeple mj-${m.job}`,
+    		'class': `meeple mj-${m.job}`,
     	});
     	const resourceGroup = createAppendSvg('g', group);
-    	setAttributes(resourceGroup, { class: 'm-res-g res-g' });
+    	setAttr(resourceGroup, { 'class': 'm-res-g res-g' });
     	return group;
     }
 
@@ -713,10 +729,10 @@
     	const points = getPolygonPoints(sides, r, offsetAngle)
     		.map((pointsArr) => pointsArr.join(','))
     		.join(' ');
-    	setAttributes(shapeEl, {
+    	setAttr(shapeEl, {
     		points,
     		r,
-    		class: `res res-${res}`,
+    		'class': `res res-${res}`,
     		'data-res': res,
     	});
     	return shapeEl;
@@ -761,6 +777,7 @@
     			b.refresh = F;
     		}
     		if (!bEl) bEl = addBuildingSvg(b, layers.building);
+    		bEl.classList.toggle('closed', !b.on);
     		bEl.classList.toggle('selectedb', (b.key === g.selectedBuildingKey));
     		setBuildingProgressSvg(b);
     		renderResources(b.inv, bEl.querySelector('.res-g'), bt.r);
@@ -771,7 +788,8 @@
     	let mEl = $id(m.key);
     	if (!mEl) mEl = addMeepleSvg(m, layer);
     	const circle = mEl.querySelector('.meeple');
-    	circle.setAttribute('class', `meeple mj-${m.job}`);
+    	setAttr(circle, { 'class': `meeple mj-${m.job}` });
+    	mEl.classList.toggle('hurt', m.hp < HP);
     	mEl.style.transform = translateStyle(m);
     	renderResources(m.inv, mEl.querySelector('.res-g'), MEEPLE_SIZE);
     }
@@ -804,14 +822,8 @@
     		const n = counts[job];
     		numEl.innerText = n;
     		const max = (job === 'defe') ? maxDefenders : maxMeeples;
-    		if (input.max !== max) {
-    			input.setAttribute('max', max);
-    			input.max = max;
-    		}
-    		if (input.value !== n) {
-    			input.setAttribute('value', n);
-    			input.value = n;
-    		}
+    		if (input.max !== max) setInputAttr(input, 'max', max);
+    		if (input.value !== n) setInputAttr(input, 'value', n);
     	});
     }
 
@@ -820,8 +832,10 @@
     	const bt = buildingTypes[b.type];
     	// const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${bt.upgrades.length})</b></button>`;
     	// ${bt.upgrades.length ? upgradeButton : ''}
-    	const toggleButtons = `<button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
-		<button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>`;
+    	const toggleButtons = `<div class="switch">
+		<button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
+		<button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>
+	</div>`;
     	const prod = `<div>🪚 Production:
 			<span class="prodin ${b.supplied ? 'supplied' : 'missing'}">
 				${(bt.input.length) ? bt.input.join(', ') : '(No input)'}
@@ -927,11 +941,13 @@
 
     function getAllResourceCounts() {
     	const counts = {};
-    	loopBuildings((b) => {
-    		b.inv.forEach((res) => {
+    	const sumInv = (w) => {
+    		w.inv.forEach((res) => {
     			counts[res] = (counts[res] || 0) + 1;
     		});
-    	});
+    	};
+    	loopBuildings(sumInv);
+    	loopCitizens(sumInv);
     	return counts;
     }
 
@@ -985,6 +1001,10 @@
     	const dist = vec2(b).distance(spot);
     	return (dist > bType.r) ? null : b;
     }
+
+    // function getRoadsConnected(b) {
+    // 	return g.roadKeys.filter((r) => (r.from === b.key || r.to === b.key));
+    // }
 
     function getBuildingsConnected(bKey) {
     	return g.roadKeys.reduce((arr, rKey) => {
@@ -1071,9 +1091,9 @@
     	), 0);
     }
 
-    /** Does building have a list of resources? */
-    function doesBuildingHave(b, arr = []) {
-    	const leftOver = b.inv.reduce((left, res) => {
+    /** Does an inventory have a list of resources? */
+    function doesInvHave(inv, arr = []) {
+    	const leftOver = inv.reduce((left, res) => {
     		const i = left.indexOf(res);
     		if (i >= 0) left.splice(i, 1);
     		return left;
@@ -1152,7 +1172,7 @@
 
     /* ------------------------------ Looping ------------------ */
 
-    function destroyMeeple(m) {
+    function destroyMeeple(m) { // aka kill
     	const c = g.citizenKeys.indexOf(m.key);
     	if (c !== -1) g.citizenKeys.splice(c, 1);
     	const i = g.invaderKeys.indexOf(m.key);
@@ -1176,14 +1196,16 @@
     	const b = getBuildingOn(m);
     	if (!b) return;
     	resetProductionCooldown(b);
-    	if (b.inv.length) b.inv.pop();
+    	if (rand() < 0.5) { // Slow down the pillaging a little bit
+    		if (b.inv.length) b.inv.pop();
+    	}
     }
 
-    /** Removes a list of resources from a building - all or nothing. Returns what's left to consume. */
-    function consumeResources(b, arr = [], allOrNothing = F) {
+    /** Removes a list of resources from a building or meeple - all or nothing. Returns what's left to consume. */
+    function consumeResources(w, arr = [], allOrNothing = F) {
     	if (!arr.length) return [];
-    	if (allOrNothing && !doesBuildingHave(b, arr)) return [...arr];
-    	return removeInvResources(b.inv, arr);
+    	if (allOrNothing && !doesInvHave(w.inv, arr)) return [...arr];
+    	return removeInvResources(w.inv, arr);
     }
 
     /** Make resources and add to a building  */
@@ -1213,8 +1235,7 @@
     	if ((!type.output && !type.input) || !b.on) return; // Doesn't produce or not on
     	if (!type.input.length) b.supplied = T; // always supplied if no inputs
     	if (!b.supplied) {
-    		// Do we have input in inventory?
-    		// if (!doesBuildingHave(b, type.input)) return;
+    		// Consume but only if we have all input in inventory
     		const left = consumeResources(b, type.input, T);
     		if (left.length > 0) return; // Did not consume all? Probably doesn't have it yet
     		b.supplied = T;
@@ -1313,6 +1334,14 @@
     	m.y += dist * randSign();
     }
 
+    function nonCarrierDropOff(m) {
+    	if (!m.inv.length) return {};
+    	const b = getBuildingOn(m);
+    	if (!b) return {};
+    	const dropped = dropResource(m, b);
+    	return { b, dropped };
+    }
+
     function simRest(m, delta) {
     	if (g.invaderKeys.length) return; // only rest if there are no invaders
     	if (m.hp < HP) {
@@ -1325,6 +1354,7 @@
     function simIdle(m, delta) {
     	checkArrivalTrimPath(m);
     	if (!m.path.length) {
+    		nonCarrierDropOff(m);
     		// TODO LATER: Do a momentary rest? If rested then continue
     		// Choose a new random destination and path
     		setPathToRandBuilding(m, g.buildingKeys);
@@ -1338,6 +1368,7 @@
     function simProd(m, delta) {
     	checkArrivalTrimPath(m);
     	if (!m.path.length) {
+    		nonCarrierDropOff(m);
     		if (isMeepleWorkingAt(m)) {
     			moveWorking(m, delta);
     			return;
@@ -1396,8 +1427,11 @@
     function simDefend(m, delta) {
     	checkArrivalTrimPath(m);
     	if (!m.path.length) {
-    		// TODO: If on a defense place then increase defense score
-    		m.defense = Math.min(m.defense + 0.01, DEF_DEF);
+    		const { b } = nonCarrierDropOff(m);
+    		// If we're on a defense place then increase defense score
+    		if (b && buildingTypes[b.type].classification === '🛡️') {
+    			m.defense = Math.min(m.defense + 0.01, DEF_DEF);
+    		}
     		if (g.invaderKeys.length > 0) {
     			const target = g.meeples[randPick(g.invaderKeys)];
     			setPathTo(m, target, DEFENDER_PATH_RANGE);
@@ -1529,8 +1563,13 @@
     function tapWorld(e) {
     	const t = e.target;
     	const classes = t.classList;
+    	// if (g.state === 'intro') {
+    	// 	ZZFX.x = new AudioContext();
+    	// 	ZZFX.x.resume();
+    	// }
     	// start game if not started
     	g.state = 'game';
+    	// ZZFX.play(...[1.01,,458,.02,,.01,4,.98,26,,-95,.05,,,28,,,.08]);
     	if (classes.contains('building')) {
     		const b = g.buildings[t.closest('g').id];
     		if (g.creating && g.selectedBuildingKey) {
@@ -1572,6 +1611,7 @@
     		},
     		'#b-on': () => g.buildings[g.selectedBuildingKey].on = T,
     		'#b-off': () => g.buildings[g.selectedBuildingKey].on = F,
+    		'#cd': () => g.countdown -= (10 * 1000),
     		// '#b-up-toggle': () => g.upgradesOpen = !g.upgradesOpen,
     		'#kamikaze': () => {
     			if (g.karma < WIND_KARMA) return;
@@ -1589,6 +1629,14 @@
     }
 
     function tapBottomUi(e) {
+    	const incRange = (e, n) => { // jass
+    		const range = e.target.parentNode.querySelector('input[type="range"]');
+    		setInputAttr(range, 'value', Number(range.value || 0) + n);
+    		const event = new Event('change');
+    		range.dispatchEvent(event);
+    		// render();
+    		// renderJobAssignment();
+    	};
     	handleTap(e, {
     		'#play': startLoop,
     		'#pause': stopLoop,
@@ -1606,19 +1654,33 @@
     			g.assigning = !(g.assigning);
     			renderJobAssignment();
     		},
+    		'.dec-range': (e) => incRange(e, -1),
+    		'.inc-range': (e) => incRange(e, 1),
     	});
     }
 
     function setupDom() {
-    	setHtml('#jass', `<div>Loyal to your Hōjō clan: <span id="mcounts"></span>
+    	setHtml('#jass', `<div>Loyal to Hōjō clan: <span id="mcounts"></span>
 		<br><span class="altname">Build houses or towers to increase capacity.</span></div>
 		<ul>${JOB_KEYS.map((j, i) => {
 		const job = JOBS_OBJ[j];
-		return `<li id=jr-${j}><label for="input-${j}">${job.name} <span class="altname">(${job.altName})</span> ${job.classification}</label><b><span class=jr-num></span></b>
-		<input id="input-${j}" type=range min=0></li>`
+		return `<li id="jr-${j}">
+			<label for="input-${j}">
+				<span>
+					${job.name}
+					<span class="altname">(${job.altName})</span>
+				</span>
+				<i>${job.classification}</i>
+			</label><b><span class="jr-num"></span></b>
+			<div class="jass-ui">
+				<button class="dec-range">-</button>
+				<input id="input-${j}" type="range" min="0">
+				<button class="inc-range">+</button>
+			</div>
+		</li>`
 	}).join('')}</ul>`);
     	// const { size } = g.world;
-    	// // setAttributes('#intro', { style: `transform: translateX(${g.size/2}px)`})
+    	// // setAttr('#intro', { style: `transform: translateX(${g.size/2}px)`})
     	// $('#intro').style.transform = `translateX(${size/2}px)`;
     	// $('#intro-bg').style.width = `${size/2}px`;
     	// $('#intro-bg').style.height = `${size}px`;
@@ -1628,7 +1690,7 @@
     	const { el } = w;
     	/*
     	// Requires that the element has draggable true
-    	setAttributes(el, { draggable: 'true' });
+    	setAttr(el, { draggable: 'true' });
     	let dragEvent;
     	on(el, 'dragstart', (e) => {
     		e.dataTransfer.setData('text/plain', 'w'); // this is required to be draggable
@@ -1650,12 +1712,15 @@
     	// which uses "pointer" events.
     	let pickupEvent;
     	const pickupWorldCoords = { x: w.x, y: w.y };
-    	on(el, 'pointerup', (e) => {
-    		// console.log('world pointerup');
+    	const cancelPickup = (e) => {
     		pickupEvent = N;
     		g.moving = F;
     		render();
-    	});
+    	};
+    	on(el, 'pointerup', cancelPickup);
+    	on(el, 'pointercancel', cancelPickup);
+    	on(el, 'pointerout', cancelPickup);
+    	on(el, 'pointerleave', cancelPickup);
     	on(el, 'pointermove', (e) => {
     		if (pickupEvent) {
     			const delta = { x: e.clientX - pickupEvent.clientX, y: e.clientY - pickupEvent.clientY };
@@ -1688,9 +1753,9 @@
     	on($('#tui'), 'pointerdown', tapTopUi);
     	// Job assignment UI
     	loopJobs((job, input) => {
-    		on(input, 'change', (e) => {
+    		on(input, 'change', (e) => { // jass
     			const desiredJobCounts = getAdjustedJobCounts(job, Number(input.value) || 0);
-    			console.log('Desiring', desiredJobCounts);
+    			// console.log('Desiring', desiredJobCounts);
     			assignJobs(desiredJobCounts);
     			renderJobAssignment();
     			render();
@@ -1699,14 +1764,13 @@
     }
 
     function start() {
-    	console.log('hello shikken');
     	const width = window.innerWidth * WIDTH_MULT;
     	const height = window.innerHeight;
     	const c = $('#wc');
-    	setAttributes(c, { width, height });
+    	setAttr(c, { width, height });
     	const el = $('#w');
     	const svg = $('#ws');
-    	setAttributes(svg, { viewBox: `0 0 ${width} ${height}`});
+    	setAttr(svg, { viewBox: `0 0 ${width} ${height}`});
     	g.world = {
     		c,
     		el,
@@ -1746,7 +1810,7 @@
     	invaderKeys: [],
     	roads: {},
     	roadKeys: [],
-    	flashMessage: { title: 'xyz' },
+    	flashMessage: N,
     	selectedBuildingKey: N,
     	upgradesOpen: F,
     	countdownEl: N,
@@ -1759,9 +1823,11 @@
     	moving: F,
     	creating: F,
     	assigning: F,
+    	godMode: F,
     	zoom: 1,
     	start,
     	// test
+    	destroyMeeple,
     };
     window.$ = $;
     document.addEventListener('DOMContentLoaded', g.start);
