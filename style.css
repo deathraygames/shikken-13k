@@ -178,7 +178,7 @@ button, #blist {
 	transition: all ease-in-out 0.2s;
 	transform: scale(0.5);
 	max-height: 0;
-	/* max-width: 0; */
+	max-width: 0;
 	opacity: 0;
 	overflow: hidden;
 }
@@ -246,7 +246,7 @@ button, #blist {
 	text-align: right;
 }
 #jass input[type="range"] {
-	width: 18em;
+	width: 30vw;
 }
 .altname {
 	opacity: 0.5;
@@ -297,7 +297,8 @@ button, #blist {
 
 /* --- SVG --- */
 .meeple-g {
-	transition: all linear 0.1s;
+	/* game tick is ~100ms, but a slightly slower animation looks interesting */
+	transition: all linear 0.2s;
 	pointer-events: none;
 }
 .meeple {
@@ -349,6 +350,7 @@ button, #blist {
 .b-prod-circle {
 	fill: none;
 	stroke: rgba(0, 0, 0, 0.18);
+	transition: all linear 0.13s;
 }
 
 .b-outpost {
@@ -477,6 +479,10 @@ https://lospec.com/palette-list/fading-16
 .intro #hist,
 .game #hist {
 	opacity: 1;
+}
+.quote {
+	/* font-family: Georgia, 'Times New Roman', Times, serif; */
+	font-style: italic;
 }
 
 

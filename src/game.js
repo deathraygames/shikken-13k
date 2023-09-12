@@ -1659,9 +1659,11 @@ function setupEvents(w) {
 	let pickupEvent;
 	const pickupWorldCoords = { x: w.x, y: w.y };
 	const cancelPickup = (e) => {
+		// console.log('cancel pickup', e);
 		pickupEvent = N;
 		g.moving = F;
 		render();
+		// e.preventDefault();
 	};
 	on(el, 'pointerup', cancelPickup);
 	on(el, 'pointercancel', cancelPickup);
@@ -1673,6 +1675,7 @@ function setupEvents(w) {
 			w.x = pickupWorldCoords.x + delta.x; // ** 1.1;
 			w.y = pickupWorldCoords.y + delta.y; // ** 1.1;
 			render();
+			e.preventDefault();
 		}
 	});
 	on(el, 'pointerdown', (e) => {
@@ -1681,6 +1684,7 @@ function setupEvents(w) {
 		pickupEvent = e;
 		pickupWorldCoords.x = w.x;
 		pickupWorldCoords.y = w.y;
+		e.preventDefault();
 	});
 	// TODO: Fix construction so it takes into account the zoom level, 
 	// then re-enable zoom
