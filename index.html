@@ -32,6 +32,32 @@
 <!-- <script type=module src=game_bundle.js?111></script> -->
 <main>
 	<div id=w>
+		<div id=intro>
+			<svg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+				<polygon points="15,0 30,30, 15,30 22.5,15 7.5,15 15,30 0,30" />
+			</svg>
+			<div>
+				<h1>北条 執権<br>SHIKKEN</h1>
+			</div>
+			<div id=hist>
+				<p>
+				In the 13th century the Mongols conquered Korea, and by 1266 Kublai Khan set his eyes across the sea
+				to Japan. He sent emissaries demanding surrender:
+				"Genghis Khan governed at heaven's commands. All countries belong to our family...
+				Now, under our sage emperor, all under the light of the sun and the moon are his subjects.
+				You, stupid little barbarians. Do you dare to defy us by not submitting?"
+				</p>
+				<p>
+					Japan rushed to prepare for the invasion. The shikken 執権 of the Hōjō 北条 clan was absolute ruler of the Empire,
+					and began to fortify the coast, and ordered the Shinto shrines and Buddhist temples to pray for victory.
+				</p>
+			</div>
+			<div id=inst>
+				⬅️ Click and drag to move left
+				<br><b>and begin preparing for the Mongol invasion.</b>
+			</div>
+			<div id=ver>JS13k 2023 version 1.0.0</div>
+		</div>
 		<canvas id=wc width=1 height=1></canvas>
 		<svg id=ws viewBox="0 0 1 1" xmlns="http://www.w3.org/2000/svg">
 			<g id=layer-road></g>
@@ -57,10 +83,16 @@
 		<div class="uirow">
 			<span id=cd></span>
 			<span id=karma></span>
-			<div><button id=kamikaze>💨🌀🌪️<b>Kamikaze</b></button></div>
+			<div><button id=kamikaze>🌀<b>Kamikaze</b></button></div>
 			<!-- menu button -->
 		</div>
 		<div id=binfo><!-- info about selected building --></div>
 		<ul id=blist></ul>
+	</div>
+	<div id=flash>
+		<i>💨🌪️🌊</i>
+		<h1>Kamikaze!</h1>
+		<p>A divine wind washes away the Khan's fleet!</p>
+		<b>Click to dismiss</b>
 	</div>
 </main>

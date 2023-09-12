@@ -1,5 +1,5 @@
 body {
-	background: #667;
+	background: #5d7275;
 	margin: 0;
 	padding: 0;
 	font-size: calc(10px + 2vmin);
@@ -8,7 +8,7 @@ body {
 main {
 	position: fixed;
 	width: 100vw;
-	height: 100wh;
+	height: 100vh;
 }
 
 ul {
@@ -69,6 +69,9 @@ li {
 }
 #bui {
 	bottom: 0;
+}
+.intro .ui {
+	display: none;
 }
 
 button {
@@ -265,6 +268,9 @@ button, #blist {
 .mj-spir {
 	fill: #d4804d;
 }
+.mj-kill {
+	fill: #b03a48;
+}
 
 .building, .building-connector {
 	fill: #fff;
@@ -354,4 +360,100 @@ https://lospec.com/palette-list/fading-16
 .selectedb .building:hover {
 	stroke: #0ff;
 	stroke-width: 6px;
+}
+
+/* intro */
+
+#intro {
+	box-sizing: border-box;
+	padding: 10vmin;
+	width: 50%;
+	height: 100%;
+	float: right;
+	background: rgba(0, 0, 0, 0.2);
+	color: #2b2821;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-evenly;
+	align-items: center;
+	opacity: 0;
+	transition: all ease-in-out 2s;
+	position: relative;
+}
+.intro #intro {
+	opacity: 1;
+}
+.game #intro {
+	transition: all ease-in-out 10s;
+	background: rgba(0, 0, 0, 0.1);
+	opacity: 0.5;
+}
+#intro h1 {
+	font-size: 2em;
+}
+#intro svg {
+	width: 50vmin;
+}
+#intro polygon {
+	fill: #2b2821;
+}
+#hist,
+#intro b {
+	font-size: 80%;
+}
+#hist {
+	color: #624c3c;
+	max-width: 40em;
+	opacity: 0;
+	transition: all ease-in-out 3s;
+}
+.intro #hist,
+.game #hist {
+	opacity: 1;
+}
+
+
+#inst {
+	transition: all ease-in-out 5s;
+	color: #243d5c;
+	opacity: 0;
+}
+.intro #inst {
+	opacity: 1;
+}
+.game #inst {
+	transform: scale(0);
+}
+
+#ver {
+	position: absolute;
+	bottom: 1em;
+	right: 1em;
+	font-size: 50%;
+	opacity: 0.5;
+}
+
+#flash {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.75);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	text-align: center;
+	transform: scale(0);
+	transition: all 1s;
+}
+.flash #flash {
+	transform: scale(1);
+}
+#flash > i {
+	font-size: 600%;
+}
+.flash .ui,
+.flash #w {
+	filter: blur(2px);
 }
