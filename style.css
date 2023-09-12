@@ -362,13 +362,17 @@ button, #blist {
 .b-warehouse {
 	fill: #e3cfb4;
 }
-.b-woodCutter {
+.b-woodCutter,
+.b-lumberYard {
 	fill: #5b7d73;
 }
-.b-stoneMine {
+.b-stoneMine,
+.b-stoneMine2 {
 	fill: #7b685a; /* #624c3c; */
 }
-.b-oreMine {
+.b-oreMine,
+.b-oreMine2,
+.b-oreMine3 {
 	fill: #8c7c79;
 }
 .b-tower {
@@ -377,19 +381,25 @@ button, #blist {
 .b-fortress {
 	fill: #5d7275;
 }
-.b-grainFarm {
+.b-grainFarm,
+.b-grainFarm2 {
 	fill: #8e9f7d;
 }
-.b-riceFarm {
+.b-riceFarm,
+.b-riceFarm2 {
 	fill: #aaa25d;
 }
 .b-shrine {
 	fill: #d9ac8b;
 }
-.b-temple {
+.b-temple,
+.b-temple2,
+.b-grandTemple {
 	fill: #d9ac8b;
 }
-.b-farmHouse {
+.b-farmHouse,
+.b-farmHouse2,
+.b-farmHouse3 {
 	fill: #b1a58d;
 }
 .b-urbanHouse {
