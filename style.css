@@ -197,7 +197,8 @@ button, #blist {
 	box-shadow: none;
 	color: white;
 }
-.switch button[disabled] {
+.switch button[disabled],
+.switch button.active {
 	background: #e3cfb4;
 	color: #624c3c;
 }
@@ -298,7 +299,7 @@ button, #blist {
 /* --- SVG --- */
 .meeple-g {
 	/* game tick is ~100ms, but a slightly slower animation looks interesting */
-	transition: all linear 0.2s;
+	transition: all linear 0.3s;
 	pointer-events: none;
 }
 .meeple {
@@ -357,7 +358,7 @@ button, #blist {
 	fill: #e3cfb4;
 }
 .b-connector {
-	fill: #e3cfb4;
+	fill: #b99; /* #e3cfb4; */
 	stroke: #b99;
 }
 .b-stockpile,
