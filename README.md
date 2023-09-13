@@ -26,4 +26,7 @@ Tap or click and drag to move the background map around. Tap a crossroad node or
 
 ## Credits
 
-This game is inspired by Yiotro's [Achikaps](https://play.google.com/store/apps/details?id=yio.tro.achikaps_pro&hl=en_US&gl=US&pli=1), one of my favorite mobile games.
+- This game is heavily inspired by Yiotro's [Achikaps](https://play.google.com/store/apps/details?id=yio.tro.achikaps_pro&hl=en_US&gl=US&pli=1), one of my favorite mobile games.
+- Two color palettes were widely used: [Japanese Woodblock by Polyducks](https://lospec.com/palette-list/japanese-woodblock) and [Fading 16 by CopheeMoth](https://lospec.com/palette-list/fading-16).
+- The `Vector2` class from KilledByAPixel's [LittleJS](https://github.com/KilledByAPixel/LittleJS) was used.
+- All other programming, styling, and design was original, by Luke.
