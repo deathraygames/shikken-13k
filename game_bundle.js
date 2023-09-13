@@ -235,7 +235,7 @@
     	{ key: 'prod', name: 'Farmer/Artisan', altName: 'Production', classification: '🪚' },
     	{ key: 'carr', name: 'Carrier/Merchant', altName: 'Transportation', classification: '🧺' },
     	{ key: 'defe', name: 'Samurai/Soldier', altName: 'Defenders', classification: '🛡️' },
-    	{ key: 'spir', name: 'Monk/Pilgrim', altName: 'Spiritualist', classification: '🪷' },
+    	{ key: 'spir', name: 'Monk/Pilgrim', altName: 'Spiritualist', classification: '☸️' },
     ];
     const JOBS_OBJ = JOBS.reduce((o, jobObj) => { o[jobObj.key] = jobObj; return o; }, {});
     const JOB_KEYS = Object.keys(JOBS_OBJ);
@@ -264,7 +264,7 @@
     	{
     		key: 'connector',
     		name: 'Crossroad',
-    		r: BUILDING_BASE_SIZE, cap: 2, cost: [],
+    		r: BUILDING_BASE_SIZE * 0.8, cap: 2, cost: [],
     		upgrades: ['shrine', 'tower', 'stockpile', 'stoneMine', 'farmHouse', 'woodCutter', 'grainFarm', ],
     		classification: '🪧'
     	},
@@ -365,7 +365,7 @@
     		name: 'Grain Farm II',
     		r: BUILDING_BASE_SIZE + 11, cap: 8, cost: [W, W],
     		input: [], output: [Gr], rate: 6,
-    		upgrades: [],
+    		upgrades: ['riceFarm'],
     		classification: '🪚',
     	},
     	{
@@ -390,7 +390,7 @@
     		r: BUILDING_BASE_SIZE + 6, cap: 4, cost: [W, S, Or],
     		input: [Ri], output: [Ka], rate: 3,
     		upgrades: ['temple'],
-    		classification: '🪷',
+    		classification: '☸️',
     	},
     	{
     		key: 'temple',
@@ -398,7 +398,7 @@
     		r: BUILDING_BASE_SIZE + 22, cap: 6, cost: [S, Or, Or, Ri],
     		input: [Ri], output: [Ka, Ka], rate: 4,
     		upgrades: ['temple2'],
-    		classification: '🪷',
+    		classification: '☸️',
     	},
     	{
     		key: 'temple2',
@@ -406,14 +406,14 @@
     		r: BUILDING_BASE_SIZE + 24, cap: 6, cost: [S, Or, Or, Ri],
     		input: [Ri], output: [Ka, Ka], rate: 8,
     		upgrades: ['grandTemple'],
-    		classification: '🪷',
+    		classification: '☸️',
     	},
     	{
     		key: 'grandTemple',
     		name: 'Grand Temple',
     		r: BUILDING_BASE_SIZE + 26, cap: 6, cost: [Or, Or, Ri],
-    		input: [Ri], output: [Ka, Ka], rate: 12,
-    		classification: '🪷',
+    		input: [Ri], output: [Ka, Ka, Ka], rate: 12,
+    		classification: '☸️',
     	},
     	{
     		key: 'farmHouse',
@@ -919,9 +919,12 @@
     	const bt = buildingTypes[b.type];
     	// const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${bt.upgrades.length})</b></button>`;
     	// ${bt.upgrades.length ? upgradeButton : ''}
+    	// <button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
+    	// <button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>
+    	const butt = (id, active, emoji, text) => `<button id="${id}" ${active ? 'class="active"' : ''}"><i>${emoji}</i><b>${text}</b></button>`;
     	const toggleButtons = `<div class="switch">
-		<button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
-		<button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>
+		${butt('b-on', b.on, '🕯️', 'On')}
+		${butt('b-off', !b.on, '🚫', 'Off')}
 	</div>`;
     	const prod = `<div>🪚 Production:
 			<span class="prodin ${b.supplied ? 'supplied' : 'missing'}">
@@ -929,14 +932,14 @@
 			</span>
 			➡️ ${(bt.output.length) ? bt.output.join(', ') : '(No output)'}
 			<span>(${bt.rate}/min)</span>
-			<span id="b-progress">%</span>
+			<span id="b-progress"></span>
 		</div>`;
     	return `<div>
 			<div class="b-name">${bt.classification} ${bt.name || b.type}</div>
-			<div>📦 Resources: ${b.inv.join(', ')} (${b.inv.length} / max: ${bt.cap})</div>
 			${isBuildingProducer(b) ? prod : ''}
 			${bt.popMax ? `<div>+${bt.popMax} max citizens</div>` : ''}
 			${bt.defMax ? `<div>+${bt.defMax} max defenders</div>` : ''}
+			<div>📦 Resources: ${b.inv.length ? b.inv.join(', ') : 'None'} (${b.inv.length} / max: ${bt.cap})</div>
 		</div>
 		<div>
 			${toggleButtons}
@@ -975,8 +978,8 @@
     	const mins = Math.floor(cd * (1/1000) * (1/60));
     	cd -= (mins * 1000 * 60);
     	const sec = Math.floor(cd * (1/1000));
-    	setHtml(g.countdownEl, `${g.peace ? '☮️' : '⚔️'} ${mins}:${sec < 10 ? '0' : ''}${sec}`);
-    	setHtml('#karma', (g.karma) ? `🪷 Karma: ${g.karma} /${WIND_KARMA}` : '');
+    	setHtml(g.countdownEl, g.peace ? '☮️' : `⚔️ ${mins}:${sec < 10 ? '0' : ''}${sec}`);
+    	setHtml('#karma', (g.karma) ? `☸️ Karma: ${g.karma} /${WIND_KARMA}` : '');
     	$('#kamikaze').style.display = (g.karma >= WIND_KARMA) ? 'block' : 'none';
     	// List
     	if (g.selectedBuildingKey) {
@@ -1167,7 +1170,7 @@
     		bProd
     		&& (
     			(m.job === 'prod' && bt.classification === '🪚')
-    			|| (m.job === 'spir' && bt.classification === '🪷')
+    			|| (m.job === 'spir' && bt.classification === '☸️')
     		)
     	);
     }
@@ -1546,7 +1549,7 @@
     			moveWorking(m, delta);
     			return;
     		}
-    		const bKeys = filterBuildingKeys((b, bt) => (isBuildingProducing(b) && bt.classification === '🪷'));
+    		const bKeys = filterBuildingKeys((b, bt) => (isBuildingProducing(b) && bt.classification === '☸️'));
     		setPathToRandBuilding(m, bKeys);
     		return;
     	}
@@ -1694,20 +1697,24 @@
     }
 
     function tapTopUi(e) {
+    	const toggOn = () => {
+    		const b = g.buildings[g.selectedBuildingKey];
+    		b.on = !b.on;
+    	};
     	handleTap(e, {
     		'.up-action': (e, el) => {
     			const { building, upgrade } = el.dataset;
     			upgradeBuilding(building, upgrade);
     			g.creating = F;
     		},
-    		'#b-on': () => g.buildings[g.selectedBuildingKey].on = T,
-    		'#b-off': () => g.buildings[g.selectedBuildingKey].on = F,
+    		'#b-on': () => toggOn(),
+    		'#b-off': () => toggOn(),
     		'#cd': () => g.countdown -= (10 * 1000),
     		// '#b-up-toggle': () => g.upgradesOpen = !g.upgradesOpen,
     		'#kamikaze': () => {
     			if (g.karma < WIND_KARMA) return;
     			g.karma -= WIND_KARMA;
-    			g.countdown += COUNTDOWN / 2;
+    			g.countdown += (COUNTDOWN * 0.75);
     			g.kamikazes += 1;
     			if (g.kamikazes >= 2) {
     				g.peace = T;
@@ -1804,9 +1811,11 @@
     	let pickupEvent;
     	const pickupWorldCoords = { x: w.x, y: w.y };
     	const cancelPickup = (e) => {
+    		// console.log('cancel pickup', e);
     		pickupEvent = N;
     		g.moving = F;
     		render();
+    		// e.preventDefault();
     	};
     	on(el, 'pointerup', cancelPickup);
     	on(el, 'pointercancel', cancelPickup);
@@ -1818,6 +1827,7 @@
     			w.x = pickupWorldCoords.x + delta.x; // ** 1.1;
     			w.y = pickupWorldCoords.y + delta.y; // ** 1.1;
     			render();
+    			e.preventDefault();
     		}
     	});
     	on(el, 'pointerdown', (e) => {
@@ -1826,6 +1836,7 @@
     		pickupEvent = e;
     		pickupWorldCoords.x = w.x;
     		pickupWorldCoords.y = w.y;
+    		e.preventDefault();
     	});
     	// TODO: Fix construction so it takes into account the zoom level, 
     	// then re-enable zoom
@@ -1884,7 +1895,11 @@
     	const y = height / 2;
     	const b = addBuilding({ type: 'outpost', x, y });
     	b.inv = [W, W];
-    	addBuilding({ type: 'connector', x: x - (100 + randInt(width / 6)), y: y + randInt(200) - randInt(200) }, b.key);
+    	addBuilding({
+    		type: 'connector',
+    		x: x - ((BUILDING_BASE_SIZE * 3) + randInt(width / 8)),
+    		y: y + randInt(200) - randInt(200) 
+    	}, b.key);
     	addCitizen();
     	addCitizen();
     	addCitizen();
