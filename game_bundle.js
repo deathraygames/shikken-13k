@@ -175,13 +175,13 @@
     const DEF_DEF = 0.9;
     const COUNTDOWN = 4 * 60 * 1000; // 600000; // 10 minutes * 60 seconds/min * 1000 ms/sec
     const INITIAL_COUNTDOWN = 5 * 60 * 1000;
-    const WIDTH_MULT = 2;
     const INVADER_PATH_RANGE = MEEPLE_SIZE * 20;
     const DEFENDER_PATH_RANGE = MEEPLE_SIZE * 10;
     const MELEE_DIST = MEEPLE_SIZE * 1.5; // want to allow a little overlap
     const DMG = 20;
     const HP = 100;
     const HEAL = 5 / 1000; // 1 per 1000 ms
+    const EMBLEM_SIZE = 40;
 
     const $ = (q) => document.querySelector(q);
     const $id = (id) => document.getElementById(id);
@@ -252,6 +252,7 @@
     	rate: 0, // rate of production: # of outputs per minute
     	autoWork: F, // does this building work without workers?
     	classification: '', // production, defense, spirit
+    	emblem: N, // string of polygon points in scale 30x30
     };
     const buildingTypesArr = [
     	{
@@ -259,7 +260,8 @@
     		name: 'Outpost',
     		r: BUILDING_BASE_SIZE + 10, cap: 6, cost: [W, W, S, S],
     		defMax: 2, popMax: 2,
-    		classification: '🚩'
+    		classification: '🚩',
+    		emblem: '20,0 40,40, 20,40 30,20 10,20 20,40 0,40',
     	},
     	{
     		key: 'connector',
@@ -759,6 +761,15 @@
     		r: type.r,
     		'class': `building b-${b.type}`,
     	});
+    	const emblemPoly = createAppendSvg('polygon', group);
+    	const size = type.r * 1.2; // 1.2 is just a multiplier that looks good
+    	const scale = size / EMBLEM_SIZE;
+    	const x = -0.5 * EMBLEM_SIZE;
+    	setAttr(emblemPoly, {
+    		points: type.emblem || '',
+    		'class': 'b-emblem',
+    		style: `transform: scale(${scale}) ${translateStyle({ x, y: x })}`,
+    	});
     	const resourceGroup = createAppendSvg('g', group);
     	setAttr(resourceGroup, { 'class': 'b-res-g res-g' });
     	return group;
@@ -917,24 +928,25 @@
     function getBuildingInfoHtml(b) {
     	if (!b) return '';
     	const bt = buildingTypes[b.type];
-    	// const upgradeButton = `<button id="b-up-toggle"><i>👁️🛠️</i><b>Toggle Upgrades (${bt.upgrades.length})</b></button>`;
-    	// ${bt.upgrades.length ? upgradeButton : ''}
-    	// <button ${(b.on) ? 'disabled="disabled"' : ' id="b-on"'}><i>🕯️</i><b>On</b></button>
-    	// <button ${(b.on) ? 'id="b-off"' : 'disabled="disabled"'}><i>🚫</i><b>Off</b></button>
-    	const butt = (id, active, emoji, text) => `<button id="${id}" ${active ? 'class="active"' : ''}"><i>${emoji}</i><b>${text}</b></button>`;
+    	const butt = (id, active, emoji, text) => `<button id="${id}"${active ? ' class="active"' : ''}><i>${emoji}</i><b>${text}</b></button>`;
     	const toggleButtons = `<div class="switch">
 		${butt('b-on', b.on, '🕯️', 'On')}
 		${butt('b-off', !b.on, '🚫', 'Off')}
 	</div>`;
+    	let percentHtml = '';
+    	if (isBuildingProducer(b)) {
+    		const percent = Math.floor(getProdPercent(b) * 100);
+    		percentHtml = (isBuildingProducing(b)) ? `${percent}%` : '';
+    	}
     	const prod = `<div>🪚 Production:
 			<span class="prodin ${b.supplied ? 'supplied' : 'missing'}">
 				${(bt.input.length) ? bt.input.join(', ') : '(No input)'}
 			</span>
 			➡️ ${(bt.output.length) ? bt.output.join(', ') : '(No output)'}
 			<span>(${bt.rate}/min)</span>
-			<span id="b-progress"></span>
+			<span id="b-progress">${percentHtml}</span>
 		</div>`;
-    	return `<div>
+    	return `<div class="b-info">
 			<div class="b-name">${bt.classification} ${bt.name || b.type}</div>
 			${isBuildingProducer(b) ? prod : ''}
 			${bt.popMax ? `<div>+${bt.popMax} max citizens</div>` : ''}
@@ -950,10 +962,6 @@
     	if (!b) return;
     	const binfo = getBuildingInfoHtml(b);
     	setHtml('#binfo', binfo);
-    	if (isBuildingProducer(b)) {
-    		const percent = Math.floor(getProdPercent(b) * 100);
-    		setHtml('#b-progress', (isBuildingProducing(b)) ? `${percent}%` : '');
-    	}
     }
 
     function renderMeepleCounts() {
@@ -1866,7 +1874,7 @@
     }
 
     function start() {
-    	const width = window.innerWidth * WIDTH_MULT;
+    	const width = window.innerWidth * 2;
     	const height = window.innerHeight;
     	const c = $('#wc');
     	setAttr(c, { width, height });

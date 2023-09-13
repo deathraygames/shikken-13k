@@ -226,11 +226,14 @@ button, #blist {
 /* Jobs assignment */
 #jass {
 	text-align: right;
-	padding: 3vmin;
+	padding: 0;
 	background: #fff;
 	color: #000;
 	max-width: 36em;
 	margin: 1vmin 1vmin 0 auto;
+}
+.assigning #jass {
+	padding: 3vmin;
 }
 #jass ul {
 	padding: 0;
@@ -355,6 +358,12 @@ button, #blist {
 	stroke-width: 4px;
 }
 
+.b-emblem {
+	stroke: #624c3c;
+	stroke-width: 0;
+	opacity: 0.2;
+	pointer-events: none;
+}
 .b-prod-circle {
 	fill: none;
 	stroke: rgba(0, 0, 0, 0.18);
